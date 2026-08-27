@@ -1,0 +1,29 @@
+[Unit]
+Description=Private Clash to smart-box subscription converter
+Requires=smart-box-converter-route-bypass.service
+After=network-online.target smart-box-converter-route-bypass.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sing-box-smart-converter
+Group=sing-box-smart-converter
+Environment=SMART_BOX_CONFIG=/etc/smart-box-converter/config.json
+ExecStart=/usr/local/bin/smart-box-converter
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+ReadWritePaths=/var/lib/smart-box-converter
+
+[Install]
+WantedBy=multi-user.target

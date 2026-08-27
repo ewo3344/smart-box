@@ -1,0 +1,101 @@
+#!/bin/sh
+set -eu
+
+URL_FILE=/etc/smart-box/profile-url
+STATE_DIR=/var/lib/smart-box
+PROFILE=${STATE_DIR}/profile.json
+TMP=${PROFILE}.new
+INTERVAL=86400
+POLL_INTERVAL=5
+child=""
+last_hash=""
+
+stop_child() {
+    if [ -n "$child" ]; then
+        kill -TERM "$child" 2>/dev/null || true
+        wait "$child" 2>/dev/null || true
+        child=""
+    fi
+}
+
+start_child() {
+    /usr/local/bin/smart-box-core run -c "$PROFILE" &
+    child=$!
+    logger -t smart-box "core started"
+}
+
+child_running() {
+    [ -n "$child" ] &&
+        kill -0 "$child" 2>/dev/null &&
+        [ -r "/proc/$child/stat" ] &&
+        [ "$(awk '{print $3}' "/proc/$child/stat")" != "Z" ]
+}
+
+wait_for_refresh() {
+    remaining=$INTERVAL
+    while [ "$remaining" -gt 0 ]; do
+        if ! child_running; then
+            wait "$child" 2>/dev/null || true
+            child=""
+            return 1
+        fi
+        delay=$POLL_INTERVAL
+        if [ "$remaining" -lt "$delay" ]; then
+            delay=$remaining
+        fi
+        sleep "$delay" &
+        wait $! || true
+        remaining=$((remaining - delay))
+    done
+}
+
+terminate() {
+    stop_child
+    exit 0
+}
+
+trap stop_child EXIT
+trap terminate INT TERM
+umask 077
+mkdir -p "$STATE_DIR"
+
+if [ -s "$PROFILE" ] && /usr/local/bin/smart-box-core check -c "$PROFILE" >/dev/null 2>&1; then
+    last_hash=$(sha256sum "$PROFILE" | awk '{print $1}')
+    start_child
+    if ! wait_for_refresh; then
+        logger -t smart-box "core exited; requesting service restart"
+        exit 1
+    fi
+fi
+
+while :; do
+    url=$(tr -d '\r\n' < "$URL_FILE")
+    if curl -fsSL --retry 2 --connect-timeout 10 --max-time 120 "$url" -o "$TMP"; then
+        if /usr/local/bin/smart-box-core check -c "$TMP" >/dev/null 2>&1; then
+            new_hash=$(sha256sum "$TMP" | awk '{print $1}')
+            if [ "$new_hash" != "$last_hash" ]; then
+                mv -f "$TMP" "$PROFILE"
+                stop_child
+                last_hash=$new_hash
+                start_child
+                logger -t smart-box "profile updated"
+            else
+                rm -f "$TMP"
+                if ! child_running; then
+                    stop_child
+                    start_child
+                fi
+            fi
+        else
+            rm -f "$TMP"
+            logger -t smart-box "downloaded profile failed validation"
+        fi
+    else
+        rm -f "$TMP"
+        logger -t smart-box "profile download failed; keeping last profile"
+    fi
+    if ! wait_for_refresh; then
+        logger -t smart-box "core exited; requesting service restart"
+        exit 1
+    fi
+done

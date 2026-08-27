@@ -1,0 +1,48 @@
+#!/bin/sh
+set -eu
+
+SERVICE_USER=sing-box-smart-converter
+MAIN_PRIORITY=8998
+STOP_PRIORITY=8999
+
+delete_ipv4_rules() {
+    while ip rule del priority "$STOP_PRIORITY" 2>/dev/null; do :; done
+    while ip rule del priority "$MAIN_PRIORITY" 2>/dev/null; do :; done
+}
+
+delete_ipv6_rules() {
+    while ip -6 rule del priority "$STOP_PRIORITY" 2>/dev/null; do :; done
+    while ip -6 rule del priority "$MAIN_PRIORITY" 2>/dev/null; do :; done
+}
+
+delete_rules() {
+    delete_ipv6_rules
+    delete_ipv4_rules
+}
+
+add_rules() {
+    uid=$(id -u "$SERVICE_USER")
+    delete_rules
+
+    if ! ip rule add priority "$MAIN_PRIORITY" uidrange "$uid-$uid" lookup main ||
+        ! ip rule add priority "$STOP_PRIORITY" uidrange "$uid-$uid" type unreachable ||
+        ! ip -6 rule add priority "$MAIN_PRIORITY" uidrange "$uid-$uid" lookup main ||
+        ! ip -6 rule add priority "$STOP_PRIORITY" uidrange "$uid-$uid" type unreachable; then
+        delete_rules
+        echo "failed to install converter route bypass" >&2
+        exit 1
+    fi
+}
+
+case "${1:-}" in
+    add)
+        add_rules
+        ;;
+    remove)
+        delete_rules
+        ;;
+    *)
+        echo "usage: $0 add|remove" >&2
+        exit 2
+        ;;
+esac

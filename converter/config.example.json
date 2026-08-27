@@ -1,0 +1,14 @@
+{
+  "listen": "0.0.0.0:38473",
+  "public_url": "https://converter.example.invalid",
+  "public_path": "replace-with-a-long-random-token",
+  "refresh_interval": "24h",
+  "cache_dir": "/var/lib/smart-box-converter/cache",
+  "sources": [
+    {"name": "柚子云", "url": "https://provider.example/subscription"},
+    {"name": "CTC", "url": "https://provider.example/subscription"},
+    {"name": "影子", "url": "https://provider.example/subscription", "insecure": true},
+    {"name": "Ash", "url": "https://provider.example/subscription"},
+    {"name": "柚子酱", "url": "https://provider.example/subscription"}
+  ]
+}
