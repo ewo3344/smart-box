@@ -24,16 +24,18 @@ function Read-VersionProperty([string]$Name) {
 }
 
 Require-Command $GoCommand
-Require-Command "gomobile"
 Require-Command "java"
 $GoPath = (& $GoCommand env GOPATH).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $GoPath) {
     throw "Could not determine GOPATH with $GoCommand env GOPATH"
 }
-$Gobind = Join-Path $GoPath "bin\gobind.exe"
-if (-not (Test-Path $Gobind)) {
+$GoBin = Join-Path $GoPath "bin"
+$Gomobile = Join-Path $GoBin "gomobile.exe"
+$Gobind = Join-Path $GoBin "gobind.exe"
+if (-not (Test-Path $Gomobile) -or -not (Test-Path $Gobind)) {
     throw "gomobile is not initialized. Run: gomobile init"
 }
+$env:Path = "$GoBin$([IO.Path]::PathSeparator)$env:Path"
 if (-not $env:ANDROID_HOME -and -not $env:ANDROID_SDK_ROOT) {
     throw "Android SDK is missing. Set ANDROID_HOME or ANDROID_SDK_ROOT."
 }

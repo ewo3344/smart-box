@@ -69,11 +69,17 @@ run "$core" version
 (cd "$root/converter" && run env SMART_BOX_CORE="$core" go test ./...)
 
 if [ "$run_android" -eq 1 ]; then
+    go_path=$(go env GOPATH)
+    [ -n "$go_path" ] || {
+        printf '%s\n' 'verify-release: could not determine GOPATH' >&2
+        exit 1
+    }
+    PATH="$go_path/bin:$PATH"
+    export PATH
     command -v gomobile >/dev/null 2>&1 || {
         printf '%s\n' 'verify-release: gomobile is required for Android verification' >&2
         exit 1
     }
-    go_path=$(go env GOPATH)
     [ -x "$go_path/bin/gobind" ] || {
         printf '%s\n' 'verify-release: gomobile is not initialized; run gomobile init' >&2
         exit 1
