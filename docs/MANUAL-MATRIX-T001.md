@@ -22,7 +22,7 @@
 | 10 | NODE_SCORE_SEVEN_DAY_DECAY | DEFERRED | 2026-08-29 | 七天衰减无法在单次会话验证；需跨至少 7 日的节点分数对照，本轮无该时间窗口 |
 | 11 | WIFI_MOBILE_NETWORK_SWITCH | PASS | 2026-08-29 | 关闭 Wi-Fi 后 VPNService 仍 `isForeground=true`、sessionId=smart-box、前台通知仍在；再打开 Wi-Fi 后 VPN 仍保持前台 |
 | 12 | DOUYIN_COMMENT_POST | | | |
-| 13 | TELEGRAM_SEND_RECEIVE | | | |
+| 13 | TELEGRAM_SEND_RECEIVE | PASS | 2026-08-29 | Telegram 会话内发出新消息后界面显示 Sent/Seen，同会话同时出现 Received 新消息 |
 | 14 | NOTIFICATION_PERMISSION | PASS | 2026-08-29 | POST_NOTIFICATIONS 为 granted；运行中前台通知存在且含「停止」动作 |
 | 15 | VPN_CONSENT | PASS | 2026-08-29 | VPNService 已绑定；vpn_management 显示 active package 为本应用、sessionId=smart-box、active type=1 |
 
@@ -31,4 +31,4 @@
 - 未做就留空，不填推测值
 - 第 10 项（7 天衰减）如无法在单次会话验证，标注 `DEFERRED` 并写明依据
 
-第 9 / 12 / 13 项本轮未观察到节点打挂后的失败罚分、实际发表抖音评论、或 Telegram 实际收发，按规则留空。
+第 9 / 12 项本轮未观察到节点打挂后的失败罚分或实际发表抖音评论，按规则留空。
