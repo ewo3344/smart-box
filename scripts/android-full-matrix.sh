@@ -18,8 +18,9 @@ OUT_DIR="$ROOT/verification/android-full-matrix-$RUN_DATE"
 SERIAL=""
 APK=""
 KEEP_LOGS=0
+MATRIX_SELFTEST=""
 POLL_SECONDS=${SMART_BOX_ANDROID_POLL_SECONDS:-45}
-UI_DUMP_TIMEOUT=${SMART_BOX_UI_DUMP_TIMEOUT_SECONDS:-8}
+UI_DUMP_TIMEOUT=${SMART_BOX_UI_DUMP_TIMEOUT_SECONDS:-20}
 TMP_HOME=""
 GRADLE_CACHE="${SMART_BOX_GRADLE_USER_HOME:-${GRADLE_USER_HOME:-${HOME:-$ROOT}/.gradle}}"
 REPORT=""
@@ -91,6 +92,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --out=*) OUT_DIR=${1#*=} ;;
         --keep-logs) KEEP_LOGS=1 ;;
+        --self-test-wait-stopped) MATRIX_SELFTEST=wait-stopped ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; fail "unknown option: $1" ;;
     esac
@@ -573,13 +575,17 @@ ui_dump() {
     local name=$1
     local raw="$OUT_DIR/${name}-${RUN_ID}.xml.raw"
     local clean="$OUT_DIR/${name}-${RUN_ID}.xml"
-    local rc
-    if adb_timeout_call shell uiautomator dump /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 \
-        && adb_timeout_call exec-out cat /sdcard/smart-box-matrix-window.xml > "$raw" 2>/dev/null; then
-        rc=0
-    else
+    local rc=1
+    local attempt
+    for attempt in 1 2 3; do
+        if adb_timeout_call shell uiautomator dump /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 \
+            && adb_timeout_call exec-out cat /sdcard/smart-box-matrix-window.xml > "$raw" 2>/dev/null; then
+            rc=0
+            break
+        fi
         rc=$?
-    fi
+        sleep 1
+    done
     adb_timeout_call shell rm -f /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 || true
     if [[ "$rc" -eq 0 && -s "$raw" ]]; then
         redact_file "$raw" "$clean"
@@ -588,6 +594,7 @@ ui_dump() {
     else
         : > "$clean"
         rm -f -- "$raw"
+        UI_LAST=""
     fi
     report_line "UI_DUMP=$name RC=$rc FILE=$clean"
     printf '  %-28s rc=%s (%s)\n' "ui-$name" "$rc" "$clean"
@@ -612,6 +619,14 @@ try:
 except (OSError, ET.ParseError):
     raise SystemExit(1)
 
+parent = {child: node for node in root.iter() for child in list(node)}
+
+def click_target(node):
+    current = node
+    while current is not None and current.attrib.get("clickable", "false") != "true":
+        current = parent.get(current)
+    return current if current is not None else node
+
 items = []
 for node in root.iter():
     text = (node.attrib.get("text") or "").strip()
@@ -628,16 +643,16 @@ for node in root.iter():
             score = max(score, 50)
     if not score:
         continue
-    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", node.attrib.get("bounds", ""))
+    target = click_target(node)
+    match = re.fullmatch(r"\[(\d+),(\d+)\]\[(\d+),(\d+)\]", target.attrib.get("bounds", ""))
     if not match:
         continue
     x1, y1, x2, y2 = map(int, match.groups())
     if x2 <= x1 or y2 <= y1:
         continue
-    if node.attrib.get("enabled", "true") != "true":
+    if target.attrib.get("enabled", "true") != "true":
         continue
-    # Prefer a clickable exact match, then the largest exact match.
-    clickable = node.attrib.get("clickable", "false") == "true"
+    clickable = target.attrib.get("clickable", "false") == "true"
     items.append((score + (10 if clickable else 0), (x2 - x1) * (y2 - y1), (x1 + x2) // 2, (y1 + y2) // 2))
 
 if items:
@@ -659,16 +674,39 @@ ui_click_mode() {
     adb_call shell input tap "$x" "$y" >/dev/null 2>&1
 }
 
+adb_transport_failed() {
+    local file=$1
+    local rc=$2
+    if [[ "$rc" -ne 0 ]]; then
+        return 0
+    fi
+    [[ -f "$file" ]] || return 0
+    grep -Eqi 'adb: device .* not found|device offline|no devices/emulators found|error: closed|adb: failed to connect' "$file"
+}
+
 runtime_snapshot() {
     local name=$1
+    LAST_SNAPSHOT_OK=1
     capture_adb_shell "$name-vpn" dumpsys vpn
     local vpn_file=$CAPTURE_LAST
+    if adb_transport_failed "$CAPTURE_LAST" "$CAPTURE_RC"; then
+        LAST_SNAPSHOT_OK=0
+    fi
     capture_adb_shell "$name-services" dumpsys activity services "$PACKAGE_NAME"
     local service_file=$CAPTURE_LAST
+    if adb_transport_failed "$CAPTURE_LAST" "$CAPTURE_RC"; then
+        LAST_SNAPSHOT_OK=0
+    fi
     capture_adb_shell "$name-interfaces" ip -o addr show
     local interface_file=$CAPTURE_LAST
+    if adb_transport_failed "$CAPTURE_LAST" "$CAPTURE_RC"; then
+        LAST_SNAPSHOT_OK=0
+    fi
     capture_adb_shell "$name-processes" ps -A
     local process_file=$CAPTURE_LAST
+    if adb_transport_failed "$CAPTURE_LAST" "$CAPTURE_RC"; then
+        LAST_SNAPSHOT_OK=0
+    fi
     LAST_VPN_FILE=$vpn_file
     LAST_SERVICE_FILE=$service_file
     LAST_INTERFACE_FILE=$interface_file
@@ -679,6 +717,8 @@ LAST_VPN_FILE=""
 LAST_SERVICE_FILE=""
 LAST_INTERFACE_FILE=""
 LAST_PROCESS_FILE=""
+LAST_SNAPSHOT_OK=1
+LAST_WAIT_BLOCKED=0
 
 runtime_active_from_files() {
     local package_seen=0
@@ -711,8 +751,17 @@ runtime_active_from_files() {
 wait_runtime_state() {
     local wanted=$1
     local elapsed=0
+    LAST_WAIT_BLOCKED=0
     while (( elapsed < POLL_SECONDS )); do
         runtime_snapshot "poll-$wanted-$elapsed"
+        if [[ "$LAST_SNAPSHOT_OK" -ne 1 ]]; then
+            LAST_WAIT_BLOCKED=1
+            report_line "RUNTIME_POLL=ADB_ERROR wanted=$wanted elapsed=$elapsed"
+            sleep 1
+            elapsed=$((elapsed + 1))
+            continue
+        fi
+        LAST_WAIT_BLOCKED=0
         if [[ "$wanted" == "active" ]] && runtime_active_from_files; then
             return 0
         fi
@@ -722,7 +771,70 @@ wait_runtime_state() {
         sleep 1
         elapsed=$((elapsed + 1))
     done
+    if [[ "$LAST_WAIT_BLOCKED" -eq 1 ]]; then
+        return 2
+    fi
     return 1
+}
+
+run_wait_stopped_selftest() {
+    local rc
+    POLL_SECONDS=2
+    MATRIX_SELFTEST_ADB_N=0
+    adb_call() {
+        local args
+        args=$(IFS=' '; printf '%s ' "$@")
+        MATRIX_SELFTEST_ADB_N=$((MATRIX_SELFTEST_ADB_N + 1))
+        if (( MATRIX_SELFTEST_ADB_N <= 4 )); then
+            case "$args" in
+                *'dumpsys activity services'*)
+                    printf '%s\n' \
+                        'ACTIVITY MANAGER SERVICES (dumpsys activity services)' \
+                        '* ServiceRecord{test} io.nekohasekai.sfa.smartbox/io.nekohasekai.sfa.bg.VPNService' \
+                        'startForegroundCount=1'
+                    ;;
+                *'dumpsys vpn'*) printf '%s\n' "Can't find service: vpn" ;;
+                *) printf '%s\n' ok ;;
+            esac
+            return 0
+        fi
+        printf '%s\n' "adb: device 'TEST' not found"
+        return 1
+    }
+    rc=0
+    wait_runtime_state stopped || rc=$?
+    if [[ "$rc" -eq 0 ]]; then
+        printf '%s\n' 'SELFTEST FAIL: adb device loss was treated as STOP'
+        exit 1
+    fi
+    if [[ "$rc" -ne 2 ]]; then
+        printf '%s\n' "SELFTEST FAIL: expected blocked rc 2 after adb loss, got $rc"
+        exit 1
+    fi
+
+    adb_call() {
+        local args
+        args=$(IFS=' '; printf '%s ' "$@")
+        case "$args" in
+            *'dumpsys activity services'*)
+                printf '%s\n' \
+                    'ACTIVITY MANAGER SERVICES (dumpsys activity services)' \
+                    '* ServiceRecord{test} io.nekohasekai.sfa.smartbox/io.nekohasekai.sfa.bg.VPNService' \
+                    'startForegroundCount=0'
+                ;;
+            *'dumpsys vpn'*) printf '%s\n' "Can't find service: vpn" ;;
+            *) printf '%s\n' ok ;;
+        esac
+        return 0
+    }
+    rc=0
+    wait_runtime_state stopped || rc=$?
+    if [[ "$rc" -ne 0 ]]; then
+        printf '%s\n' "SELFTEST FAIL: idle VPNService should count as stopped, rc=$rc"
+        exit 1
+    fi
+    printf '%s\n' 'SELFTEST PASS: adb loss is not STOP; idle service is STOP'
+    exit 0
 }
 
 check_error_signatures() {
@@ -747,11 +859,15 @@ check_error_signatures() {
 }
 
 stop_via_ui() {
-    ui_dump "before-stop"
-    if ui_click_mode stop; then
-        report_line "STOP_BUTTON=CLICKED_DYNAMIC_UI"
-        return 0
-    fi
+    local attempt
+    for attempt in 1 2 3; do
+        ui_dump "before-stop"
+        if ui_click_mode stop; then
+            report_line "STOP_BUTTON=CLICKED_DYNAMIC_UI"
+            return 0
+        fi
+        sleep 1
+    done
     return 1
 }
 
@@ -816,6 +932,11 @@ run_device_lifecycle() {
                 STOP_STATUS=PASS
                 report_line "STOP=PASS (service/VPN/TUN disappeared)"
                 display "STOP=PASS"
+            elif [[ "$LAST_WAIT_BLOCKED" -eq 1 ]]; then
+                STOP_STATUS=BLOCKED
+                mark_blocked
+                report_line "STOP=BLOCKED (adb/device error while waiting for runtime to disappear)"
+                display "STOP=BLOCKED"
             else
                 STOP_STATUS=FAIL
                 mark_failure
@@ -924,6 +1045,9 @@ write_summary() {
 } >> "$REPORT"
 
 display "REPORT=$REPORT"
+if [[ "$MATRIX_SELFTEST" == "wait-stopped" ]]; then
+    run_wait_stopped_selftest
+fi
 run_static_gate
 
 if ! discover_device; then
