@@ -53,6 +53,11 @@ Publish in one direction only:
 4. 更新 gitlink — only after `scripts/publish-submodules.sh --check` passes,
    move the superproject gitlink to that fork snapshot.
 
+Daily worktrees may still have `origin` on SagerNet. Add a separate `publish`
+remote that points at the forks (local git config only; does not move gitlinks):
+
+    scripts/publish-submodules.sh --setup-remotes
+
 `scripts/publish-submodules.sh --check` is fail-closed:
 
 - A gitlink SHA that `git ls-remote` on the fork cannot see is rejected.

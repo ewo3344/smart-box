@@ -23,13 +23,16 @@ android_commit=
 
 usage() {
     cat <<'EOF'
-usage: scripts/publish-submodules.sh --check [options]
+usage: scripts/publish-submodules.sh --check|--setup-remotes [options]
 
 Validate that the superproject gitlinks for core and android:
   1. are reachable as refs on the fork remote (not a private/unpushed commit
      and not a SagerNet baseline the fork cannot see)
   2. contain smart-box identity (core/protocol/group/smart.go, or the Android
      applicationId io.nekohasekai.sfa.smartbox)
+
+--setup-remotes adds a local `publish` remote in the core/ and android/
+worktrees pointing at the forks. It never updates gitlinks.
 
 This command never runs git add android, git add core, git add ., git add -A,
 or git commit -a.
@@ -68,13 +71,16 @@ gitlink_sha() {
 remote_has_commit() {
     local remote=$1
     local sha=$2
-    local line remote_sha
+    local line remote_sha out
+    if ! out=$(git ls-remote "$remote" 2>&1); then
+        die "cannot ls-remote $remote: $out"
+    fi
     while IFS= read -r line; do
         remote_sha=${line%%[[:space:]]*}
         if [[ "$remote_sha" == "$sha" ]]; then
             return 0
         fi
-    done < <(git ls-remote "$remote" 2>/dev/null || true)
+    done <<< "$out"
     return 1
 }
 
@@ -149,10 +155,41 @@ run_check() {
     printf 'publish-submodules: CHECK PASS\n'
 }
 
+ensure_publish_remote() {
+    local path=$1
+    local url=$2
+    local worktree=$root/$path
+    local existing
+    [[ -d "$worktree" ]] || die "missing submodule worktree: $path"
+    git -C "$worktree" rev-parse --git-dir >/dev/null 2>&1 || \
+        die "$path is not a git worktree"
+    if existing=$(git -C "$worktree" remote get-url publish 2>/dev/null); then
+        if [[ "$existing" != "$url" ]]; then
+            die "$path publish remote is $existing, expected $url"
+        fi
+        printf 'publish-submodules: %s publish remote already %s\n' "$path" "$url"
+        return 0
+    fi
+    git -C "$worktree" remote add publish "$url" || \
+        die "failed to add publish remote in $path"
+    printf 'publish-submodules: added %s publish remote %s\n' "$path" "$url"
+}
+
+run_setup_remotes() {
+    [[ -d "$root/.git" ]] || die "not a git repository: $root"
+    ensure_publish_remote core "$core_remote"
+    ensure_publish_remote android "$android_remote"
+    printf 'publish-submodules: SETUP-REMOTES PASS\n'
+}
+
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --check)
             mode=check
+            shift
+            ;;
+        --setup-remotes)
+            mode=setup-remotes
             shift
             ;;
         --root)
@@ -193,12 +230,15 @@ done
 
 [[ -n "$mode" ]] || {
     usage >&2
-    die "required: --check"
+    die "required: --check or --setup-remotes"
 }
 
 case "$mode" in
     check)
         run_check
+        ;;
+    setup-remotes)
+        run_setup_remotes
         ;;
     *)
         die "unsupported mode: $mode"

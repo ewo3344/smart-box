@@ -186,6 +186,80 @@ class PublishSubmodulesCheckTest(unittest.TestCase):
         self.assertIn("not reachable from fork remote", output)
         self.assertNotIn("CHECK PASS", output)
 
+    def test_rejects_upstream_bare_tree_from_head_gitlink(self) -> None:
+        core_src = self._init_repo("core-bare-src")
+        android_src = self._init_repo("android-smart-src")
+        core_sha = self._bare_core_commit(core_src)
+        android_sha = self._smart_android_commit(android_src)
+        core_remote = self.root / "core-bare.git"
+        android_remote = self.root / "android-smart.git"
+        make_bare_remote(core_src, core_remote)
+        make_bare_remote(android_src, android_remote)
+        super_repo = self._superproject(
+            core_sha, android_sha, [core_remote, android_remote]
+        )
+
+        result = run(
+            [
+                str(self.script),
+                "--check",
+                "--root",
+                str(super_repo),
+                "--core-remote",
+                str(core_remote),
+                "--android-remote",
+                str(android_remote),
+            ],
+            check=False,
+        )
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, output)
+        self.assertIn("lacks protocol/group/smart.go", output)
+        self.assertNotIn("CHECK PASS", output)
+
+    def test_setup_remotes_adds_publish_without_staging_gitlinks(self) -> None:
+        super_repo = self._init_repo("super-setup")
+        core_wt = super_repo / "core"
+        android_wt = super_repo / "android"
+        core_wt.mkdir()
+        android_wt.mkdir()
+        git(core_wt, "init", "-b", "main")
+        init_identity(core_wt)
+        git(android_wt, "init", "-b", "main")
+        init_identity(android_wt)
+        write(core_wt / "README", "core worktree\n")
+        write(android_wt / "README", "android worktree\n")
+        commit_tree(core_wt, "core base")
+        commit_tree(android_wt, "android base")
+
+        result = run(
+            [
+                str(self.script),
+                "--setup-remotes",
+                "--root",
+                str(super_repo),
+                "--core-remote",
+                "https://github.com/ewo3344/smart-box-core.git",
+                "--android-remote",
+                "https://github.com/ewo3344/smart-box-android.git",
+            ],
+            check=False,
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("SETUP-REMOTES PASS", output)
+        self.assertEqual(
+            git(core_wt, "remote", "get-url", "publish").stdout.strip(),
+            "https://github.com/ewo3344/smart-box-core.git",
+        )
+        self.assertEqual(
+            git(android_wt, "remote", "get-url", "publish").stdout.strip(),
+            "https://github.com/ewo3344/smart-box-android.git",
+        )
+        staged = git(super_repo, "diff", "--cached", "--name-only").stdout
+        self.assertNotIn("core", staged.splitlines())
+        self.assertNotIn("android", staged.splitlines())
+
 
 if __name__ == "__main__":
     unittest.main()

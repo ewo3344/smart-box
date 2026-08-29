@@ -12,7 +12,7 @@
 ### 验收
 - **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
 - **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–9、11–15；第 10 项七天衰减标 DEFERRED。
-- **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。
+- **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。`--setup-remotes` 在 submodule 工作树加 `publish` remote 指向 fork，不更新 gitlink。
 
 ### 修复
 - **TUN 无法启动（部署配置，2026-08-25）**: `smart-box@e.service` 被运行时 mask 且「🎯 基准 Smart」缓存选中已失效的「🇬🇧 英国 Smart」，导致 baseline-dns 与 GitHub 链路 DNS 全部超时、联网验收循环失败。解除 runtime mask，将基准/GitHub 组固定到健康的「🇸🇬 新加坡 Smart」（settings.json 与 runtime.json 同步），备份并移除残留选择的 cache.db。详见 `tun-startup-fix-2026-08-25/`。
