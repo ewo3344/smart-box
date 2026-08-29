@@ -73,7 +73,7 @@ smart-box 是一个增强型代理工具，基于 sing-box 1.14.0-beta.14 开发
 ### 3. Android 客户端
 
 **NAT 耗尽解决方案**:
-- 问题：vivo V2352A 的 `mixed` 栈 5 分钟耗尽 55K 端口
+- 问题：部分 Android 厂商的 `mixed` 栈长时间运行后会耗尽连接资源
 - 方案：运行时强制 `gvisor` 栈，不修改订阅源文件
 - 效果：评论面板连续打开无崩溃，DNS EPERM 归零
 
@@ -153,7 +153,7 @@ smart-box 是一个增强型代理工具，基于 sing-box 1.14.0-beta.14 开发
 ✅ **Android 客户端**
 - NAT 耗尽问题解决（gVisor）
 - 订阅刷新有界重启和回执
-- vivo V2352A 冒烟测试通过（VPN/TUN/Telegram/抖音）
+- Android 冒烟测试通过（VPN/TUN/Telegram/抖音）
 - 零 DNS EPERM/protect failure
 
 ✅ **树莓派 Converter**
@@ -235,7 +235,7 @@ smart-box 是一个增强型代理工具，基于 sing-box 1.14.0-beta.14 开发
                               │
                               ↓
 ┌─────────────────────────────────────────────────────────────┐
-│                      树莓派 (192.168.2.102:38473)            │
+│                      树莓派 (<PI_HOST>:<PORT>)              │
 │  ┌─────────────────────────────────────────────────────┐    │
 │  │  smart-box-converter                                 │    │
 │  │  ├─ 聚合 Provider 订阅                               │    │
@@ -318,7 +318,7 @@ smart-box 是一个增强型代理工具，基于 sing-box 1.14.0-beta.14 开发
 
 ### 2. 为什么 Android 要 BindNetwork，不只 Protect？
 
-**问题**: vivo V2352A 上 `protect()` 返回 true，但 socket 仍超时。
+**问题**: 部分 Android 网络栈上 `protect()` 返回 true，但 socket 仍超时。
 
 **方案**: `protect(socket) + defaultNetwork.bindSocket(socket)`
 
@@ -424,7 +424,7 @@ minimum language version; it is not the exact compiler pin.
 
 ```bash
 # 注意：当前不在 Git 仓库，需要手动复制或初始化
-cd /home/e/workspace/smart-box
+cd /path/to/smart-box
 
 # Linux 客户端
 cd linux

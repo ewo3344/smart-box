@@ -149,7 +149,7 @@ smart-box 文档体系
 ├─ 📖 理解层
 │   ├─ PROJECT-SUMMARY.md        (项目全景，技术深度)
 │   ├─ README.md                 (项目概览)
-│   └─ HANDOFF.md                (历史记录)
+│   └─ UPSTREAMS.md              (来源与归属)
 │
 ├─ 🛠️ 实操层
 │   ├─ QUICK-REFERENCE.md        (常用命令速查)
@@ -186,7 +186,7 @@ smart-box 文档体系
 ### 解决问题
 1. **快速排查**: QUICK-REFERENCE.md → 故障排查
 2. **深入理解**: PROJECT-SUMMARY.md → 设计决策
-3. **历史问题**: 搜索 HANDOFF.md
+3. **历史问题**: 搜索 CHANGELOG.md 和组件 README
 
 ---
 
@@ -311,7 +311,7 @@ smart-box 文档体系
 
 ### 立即执行 (今天)
 ```bash
-cd /home/e/workspace/smart-box
+cd /path/to/smart-box
 
 # 1. 检查新文档
 ls -la *.md scripts/*.sh VERSION

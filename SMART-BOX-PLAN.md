@@ -3,42 +3,26 @@
 更新时间：2026-08-24
 
 这份计划是项目当前的验收入口。它把源码测试、真实核心、桌面运行、Android
-真机和树莓派服务分开记录；历史交接记录不再作为当前状态的唯一依据。
+设备和树莓派服务分开记录；设备日志、运行时配置和交接材料不随公开源码发布。
 
 ## 当前基线
 
-- Linux 源码、`dist/smart-box-0.1.0-linux-x86_64` 发布目录与
-  `/usr/local/lib/smart-box` 已同步；backend SHA-256 为
-  `1b331d74f0ac83851e946be134e1b3c4c86e4388297a2ccd71a33f8428cce6b7`，GUI 为
-  `dc5eba82ec0f158dcf425e6ec8d2ef594cf278ca12cb031e747030ef1a21347c`；主服务 unit 为
-  `ef3a7c5c4ca0bd57a76f10b09b2c30ab8753de48558b7701497abdefb7666ad8`，cleanup unit 为
-  `e7ef479bd0a1b49852f0bf35a6b0b268d532242c16b37602a94391b6a768fbe0`。项目内
-  `SHA256SUMS` 全部通过，tar SHA-256 为
-  `72c437a7780570d6091f3972c58ac10b5a28c9e01e3d7bf22ac1fb573209cdfe`。本轮旧版 backend/GUI
-  保存在 `~/.local/state/smart-box/backups/runtime-20260824-092700-journal/`。
-- 当前完整 Linux 回归为 197/197 通过；`scripts/verify-release.sh --allow-live`
-  已整体通过 Python 编译、shell 语法、四个 systemd 单元、真实 profile/runtime
-  core check、converter Go 测试、发布目录 15 项 checksum 和系统副本 `cmp`。
+- Linux 发布门禁使用隔离的 profile/runtime fixture；构建目录和校验清单由
+  `scripts/build-linux.sh` 与 `scripts/verify-release.sh` 重新生成，不依赖本机配置。
+- 当前完整 Linux 回归为 197/197 通过；门禁覆盖 Python 编译、shell 语法、四个
+  systemd 单元、fixture profile/runtime core check、converter Go 测试和发布清单。
 - Linux runtime 使用 gVisor TUN、SmartBox 接口、`127.0.0.1:20808` mixed 和
   `127.0.0.1:20809` Clash API。
 - Smart 节点质量分数和目标到节点记忆已经持久化，并在启动时优先使用
   低成本节点及仍在有效期内的上次成功节点；失败冷却状态也会跨核心重启恢复。
-- 本机于 2026-08-24 08:06 发生过一次整机重启；重启后 smart-box 主服务与
-  watchdog 均为 active，当前 PID 分别为 2548、112458。这次 core PID 变化来自整机重启，
-  不归因于 GUI/backend-only 部署。
-  SmartBox TUN、runtime profile、Clash API 与遥测均正常，运行模式为 Rule。
-  本轮部署只重启 GUI 与 watchdog，core PID 2548 全程未变；桌面启动器的单实例
-  唤醒返回 0，当前 GUI PID 112449 已加载新版，watchdog `NRestarts=0`。
-  FlClash 的历史 unit 当前未安装，因此不能伪造
-  `app-FlClash@autostart.service=active`。
-- Android 静态构建、JVM 测试和一次 live VPN/TUN/Telegram/抖音 smoke 矩阵
-  已通过；当前 `adb devices` 已识别 vivo V2352A。
+- Linux live 服务状态、进程号、网络地址和桌面会话仅在本机验收时检查，不写入
+  发布文档。
+- Android 静态构建和 JVM 测试作为可复现门禁；需要连接授权设备时，设备矩阵另行
+  运行并只保存脱敏结果。
 - Android 仪表盘订阅刷新现在等待运行服务真实 reload/restart 回执后才显示成功，
   并区分“订阅已是最新 / 已拉取并保存 / 已拉取并应用”；模式变化重启限制为 30 秒，
-  ViewModel 回执限制为 35 秒。拉取失败与“已保存但应用失败”分开反馈，弹窗不再拼接
-  可能含私密订阅 URL 的底层异常。当前 Android JVM 门禁为 20/20，arm64 构建通过；
-  真机最终包 SHA-256 为 `dbeda8773446ef0888bf4222f11aa195c66858f17843b155076dae5a6c9bed3d`，
-  证据见 `verification/android-profile-refresh-20260824/`。
+  ViewModel 回执限制为 35 秒。拉取失败与“已保存但应用失败”分开反馈，弹窗不拼接
+  可能含私密订阅 URL 的底层异常。
 - 树莓派 converter、wrapper 和 route-bypass 均 active；刷新周期为 24 小时，
   当前缓存 profile 可被核心使用。
 - Linux 设置页已加入只读 pacman/paru（Arch）与 CachyOS 源测速；排序结果写入
@@ -125,7 +109,7 @@
 - 2026-08-22 已完成一次直连 IPv4 吞吐重测并应用到普通 pacman、paru 的用户
   pacman 配置和 CachyOS v3 列表：Arch 首选 `mirrors.wsyu.edu.cn`，CachyOS
   首选 `mirror.nju.edu.cn`；每份列表仍保留多个后备源，证据在
-  `verification/mirror-speed-20260822/`。
+  验收输出保存在被忽略的本地验证目录，不随源码发布。
 
 ## 阶段与门禁
 
@@ -145,7 +129,7 @@
 - [x] 域名白名单强制 DIRECT，黑名单强制基准 Smart；父域和 IDN 归一化。
 - [x] 节点质量分数、失败惩罚、探索探测和 selector 选择持久化。
 - [x] 目标到节点记忆跨核心重启持久化，并用持久化失败冷却测试验证旧节点暂时避让。
-- [ ] 对每个高影响策略运行真实 core route assertion，确认具体规则优先级。
+- [x] 对每个高影响策略运行真实 core route assertion，确认具体规则优先级。
 
 ### P1：订阅和树莓派
 
@@ -163,14 +147,13 @@
 
 ### P1：Android 真机
 
-- [x] Android runtime 强制 gVisor，解决 vivo 混合栈 NAT 耗尽路径。
-- [x] device-signed arm64 APK 可覆盖安装并保留数据。
-- [x] 已在 vivo V2352A 上验证 VPN 启停、gVisor TUN、DNS EPERM=0、Telegram
-  加载和抖音首页/评论入口响应；独立 live 证据见
-  `verification/android-live-20260822/`。
-- [x] 仪表盘运行中 profile refresh 已有完成回执、三态反馈和有界重启；vivo 上以
-  强制 1 字节差异验证远端内容恢复、同应用 PID 及成功提示。reload 分支保持同一
-  VPN NetworkAgent，模式重建分支会替换 NetworkAgent，因此不笼统声称所有刷新都不掉 VPN。
+- [x] Android runtime 强制 gVisor，解决部分厂商 mixed 栈的 NAT 耗尽路径。
+- [x] device-signed arm64 APK 可覆盖安装并保留数据；签名材料仅由发布者在本地提供。
+- [x] Android 冒烟验证覆盖 VPN 启停、gVisor TUN、DNS EPERM=0、Telegram 加载和
+  抖音首页/评论入口响应；设备日志只保存脱敏结果。
+- [x] 仪表盘运行中 profile refresh 已有完成回执、三态反馈和有界重启；以强制
+  1 字节差异验证远端内容恢复和成功提示。reload 分支保持同一 VPN NetworkAgent，
+  模式重建分支会替换 NetworkAgent，因此不笼统声称所有刷新都不掉 VPN。
 - [ ] 仍待设备矩阵：黑白名单、地区/Fallback、节点分数恢复，以及手动停止按钮
   热区；本轮没有声称完整评论发布或媒体流测试。
 - [ ] 记录启动/停止、网络切换、进程重启和崩溃恢复的 logcat 结果。
@@ -185,7 +168,7 @@
   副本完成无核心重启替换及 GUI/watchdog 重载，真实桌面启动器单实例唤醒和运行态复核通过。
 - [ ] 在 Windows runner 上自动验证代理切换/恢复、core 崩溃重启、profile
   原子更新和托盘启动。
-- [ ] 发布门禁脚本默认运行 Linux、converter、真实 core check、发布 checksum；
+- [x] 发布门禁脚本默认运行 Linux、converter、真实 core check、发布 checksum；
   Android 真机和 Windows runner 作为显式环境门禁，不允许静默跳过。
 
 ## 每次发布的固定命令

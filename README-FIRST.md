@@ -25,7 +25,7 @@
 
 ### 解决问题
 1. **快速排查**: [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → 故障排查
-2. **历史问题**: 搜索 [HANDOFF.md](./HANDOFF.md)
+2. **历史问题**: 搜索 [CHANGELOG.md](./CHANGELOG.md) 和组件 README
 3. **设计理解**: [PROJECT-SUMMARY.md](./PROJECT-SUMMARY.md) → 关键设计决策
 
 ### 发布新版本

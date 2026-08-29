@@ -45,7 +45,8 @@ git commit -am "chore: prepare release 0.2.0"
 git checkout main
 git merge --no-ff release/v0.2.0
 git tag -a v0.2.0 -m "Release 0.2.0"
-git push origin main --tags
+git push origin main
+# 审核每个标签后再单独推送，例如：git push origin v0.2.0
 git checkout develop
 git merge --no-ff release/v0.2.0
 
@@ -65,7 +66,7 @@ git merge --no-ff hotfix/v0.1.1
 
 ```bash
 # Linux - 完整验证
-cd /home/e/workspace/smart-box
+cd /path/to/smart-box
 scripts/verify-release.sh --allow-live
 
 # Linux - 构建发布包
@@ -117,7 +118,7 @@ adb logcat | grep -E "SmartBox|VPN|TUN"
 adb shell dumpsys package io.nekohasekai.sfa.smartbox
 
 # 树莓派 - 服务状态
-ssh pi@192.168.2.102
+ssh <PI_USER>@<PI_HOST>
 sudo systemctl status smart-box-converter.service
 sudo systemctl status smart-box.service
 sudo journalctl -u smart-box-converter.service -n 100
@@ -148,7 +149,8 @@ sha256sum smart-box-* > SHA256SUMS
 
 # 6. 创建 Git tag
 git tag -a v0.X.Y -m "Release version 0.X.Y"
-git push origin main --tags
+git push origin main
+# 审核每个标签后再单独推送，例如：git push origin v0.1.1
 
 # 7. 创建 GitHub Release
 # 上传产物和 CHANGELOG
@@ -227,9 +229,9 @@ adb shell dumpsys vpn
 # 检查 VPN 权限和 TUN 权限
 
 # 树莓派 - Converter 不响应
-ssh pi@192.168.2.102
+ssh <PI_USER>@<PI_HOST>
 sudo systemctl status smart-box-converter.service
-curl http://192.168.2.102:38473/healthz
+curl http://<PI_HOST>:<PORT>/healthz
 sudo journalctl -u smart-box-converter.service -n 100
 
 # 回滚到上一版本
@@ -265,7 +267,8 @@ Smart 选择: < 10 ms（有缓存）
 # Android 签名
 export ANDROID_KEYSTORE_PASS="your-password"
 export ANDROID_KEY_ALIAS_PASS="your-password"
-scripts/sign-android-device.sh
+scripts/sign-android-device.sh \
+  dist/input.apk dist/device-signed.apk /path/to/device.keystore
 
 # Converter 测试
 export SMART_BOX_CORE=/path/to/smart-box-core

@@ -9,6 +9,9 @@
 
 ## [未发布]
 
+### 验收
+- **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
+
 ### 修复
 - **TUN 无法启动（部署配置，2026-08-25）**: `smart-box@e.service` 被运行时 mask 且「🎯 基准 Smart」缓存选中已失效的「🇬🇧 英国 Smart」，导致 baseline-dns 与 GitHub 链路 DNS 全部超时、联网验收循环失败。解除 runtime mask，将基准/GitHub 组固定到健康的「🇸🇬 新加坡 Smart」（settings.json 与 runtime.json 同步），备份并移除残留选择的 cache.db。详见 `tun-startup-fix-2026-08-25/`。
 
@@ -74,8 +77,9 @@
 - **197 测试通过**: 包含 Python 编译、单元测试、真实环境验证
 
 #### Android 客户端 (Kotlin)
-- **NAT 耗尽解决方案**: 运行时强制 `gvisor` TUN 栈，解决 vivo mixed 栈 5 分钟耗尽 55K 端口问题
-- **双重网络绑定**: `protect() + bindSocket()` 确保 vivo 设备出站可达
+- **NAT 耗尽解决方案**: 运行时强制 `gvisor` TUN 栈，避免部分 Android 厂商的
+  mixed 栈在长时间运行后耗尽连接资源
+- **双重网络绑定**: `protect() + bindSocket()` 确保 Android 出站 socket 绑定到底层 Network
 - **TUN FD 保护**: 复制到高描述符 (≥1024) 避免 vendor 异步关闭
 - **订阅刷新优化**: 等待真实 reload/restart 回执，区分"已是最新/已保存/已应用"三态
 - **有界重启**: 模式变化重启限制 30 秒，ViewModel 回执限制 35 秒
@@ -83,7 +87,7 @@
 - **Rebranding**: 包名 `io.nekohasekai.sfa.smartbox`，与上游 sing-box 应用共存
 - **单订阅源**: 移除多配置列表，改为单一 Converter 端点（协议/主机/端口/私密路径）
 - **移除自更新**: 去除 APK 安装、更新源、更新轨道功能，保留 30 分钟自动 profile 刷新
-- **vivo V2352A 验证**: VPN 启停、gVisor TUN、DNS EPERM=0、Telegram 加载、抖音评论响应
+- **Android 冒烟验证**: VPN 启停、gVisor TUN、DNS EPERM=0、Telegram 加载、抖音评论响应
 
 #### Windows 客户端 (WPF)
 - **托盘客户端**: 通知区域运行，控制 bundled core
@@ -113,8 +117,8 @@
 - **DNS EPERM 修复**: 广告域名不再通过 `REJECT` 出站解析，改用 baseline-dns
 
 ### 修复
-- **vivo TUN FD 竞态**: 使用 `F_DUPFD_CLOEXEC` 复制到 ≥1024 描述符
-- **vivo 出站超时**: `protect() + bindSocket()` 确保 socket 绑定到底层 Network
+- **Android TUN FD 竞态**: 使用 `F_DUPFD_CLOEXEC` 复制到高描述符，避免异步关闭
+- **Android 出站超时**: `protect() + bindSocket()` 确保 socket 绑定到底层 Network
 - **Android NAT 耗尽**: 运行时强制 gVisor TUN，避免 system TCP NAT 耗尽
 - **Douyin 路由冲突**: 专用规则集优先级高于 TikTok 和广告
 - **DNS EPERM 错误**: 广告域名不再通过 REJECT 出站解析
@@ -157,7 +161,7 @@
 - Linux 客户端安装和使用说明
 - Converter 部署文档
 - 完整路由规则文档 (ROUTING.md)
-- 历史交接记录 (HANDOFF.md)
+- 发布和验收说明（不包含设备交接或运行时凭据）
 - 当前验收计划 (SMART-BOX-PLAN.md)
 
 ### 基础设施
@@ -182,5 +186,5 @@
 
 ## 链接
 
-- [未发布]: https://github.com/your-org/smart-box/compare/v0.1.0...HEAD
-- [0.1.0]: https://github.com/your-org/smart-box/releases/tag/v0.1.0
+- [未发布]: https://github.com/ewo3344/smart-box/compare/v0.1.0...HEAD
+- [0.1.0]: https://github.com/ewo3344/smart-box/releases/tag/v0.1.0

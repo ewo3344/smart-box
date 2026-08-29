@@ -151,19 +151,22 @@ exhaustion and the separate Linux TUN forwarding failure without changing the
 shared subscription.
 
 The refreshed arm64 build is
-`dist/smart-box-0.1.0-core-1.14.0-beta.14-android-arm64.apk` (SHA-256
-`c570a2909f6e8211612ee26ad53348bca67ddf19222f590b53e701a4d9da1db4`). It
-targets `io.nekohasekai.sfa.smartbox`, but its default debug certificate is
-not guaranteed to match an existing installation. For the current vivo phone,
-use the device-signed copy
-`dist/smart-box-0.1.0-core-1.14.0-beta.14-android-arm64-device-signed.apk`
-(SHA-256
-`20236ebb7e188ba393ebc9f1335a1ada800a6e32a389281a0da1646979f0cee7`) or run
-`scripts/sign-android-device.sh` with the device keystore and passwords in the
-environment. That copy uses certificate SHA-256
-`8de57370597def2d26d94973d5c63cee02e81ea3af2a20aab39a26e4808878b4` and can
-update the existing phone package without clearing application data. Android
-5/6 devices use
+`dist/smart-box-0.1.0-core-1.14.0-beta.14-android-arm64.apk`. Verify any
+downloaded artifact with `sha256sum` and the release checksum file. It targets
+`io.nekohasekai.sfa.smartbox`, but its default debug certificate is not
+guaranteed to match an existing installation. For a device-signed build,
+provide the keystore path explicitly:
+
+```bash
+ANDROID_KEYSTORE_PASS='...' ANDROID_KEY_ALIAS_PASS='...' \
+  scripts/sign-android-device.sh input.apk output.apk /path/to/device.keystore
+```
+
+The resulting device-signed copy can update an installation when its
+certificate matches. The repository does not contain a keystore or passwords.
+
+Use the resulting signed APK to update an existing installation when its
+certificate matches. Android 5/6 devices use
 `dist/smart-box-0.1.0-core-1.14.0-beta.14-legacy-android-5-arm64.apk`.
 
 ## Scope and limitations

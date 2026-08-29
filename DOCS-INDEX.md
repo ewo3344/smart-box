@@ -9,7 +9,7 @@
 ### 项目概览
 - **[README.md](./README.md)** - 项目主页，技术概述和快速开始
 - **[PROJECT-SUMMARY.md](./PROJECT-SUMMARY.md)** - 完整项目总结，技术亮点和设计决策
-- **[HANDOFF.md](./HANDOFF.md)** - 历史交接记录（2026-08-15 至今）
+- 设备交接和运行时凭据不纳入公开文档，请在私有运维空间维护
 
 ### 规划和管理
 - **[DEVELOPMENT-PLAN.md](./DEVELOPMENT-PLAN.md)** - 完整开发计划，里程碑和任务列表
@@ -57,11 +57,8 @@
 - **[scripts/build-windows.ps1](./scripts/build-windows.ps1)** - Windows 构建脚本
 
 ### 测试证据
-- **[verification/](./verification/)** - 各次部署和测试的证据归档
-  - `android-live-20260822/` - Android 真机测试
-  - `mirror-speed-20260822/` - 系统源测速
-  - `persistent-node-score-20260821/` - 节点评分持久化验证
-  - 等（按日期归档）
+- 发布门禁会在本地生成脱敏报告；`verification/` 目录由 `.gitignore` 排除，
+  不作为公开源码的一部分
 
 ---
 
@@ -85,7 +82,7 @@
 1. 熟悉 [SMART-BOX-PLAN.md](./SMART-BOX-PLAN.md) 的验收标准
 2. 掌握发布流程（VERSION-CONTROL.md）
 3. 定期更新 [CHANGELOG.md](./CHANGELOG.md)
-4. 维护 [verification/](./verification/) 测试证据
+4. 维护本地（不入库）的脱敏测试报告
 
 ---
 
@@ -121,11 +118,11 @@
 - [QUICK-REFERENCE.md](./QUICK-REFERENCE.md) → 故障排查章节
 - [linux/README.md](./linux/README.md) → 命令行检查
 - 查看日志（journalctl / adb logcat / 事件查看器）
-- 搜索 [HANDOFF.md](./HANDOFF.md) 相似问题的历史解决方案
+- 查看 CHANGELOG.md 和组件 README 中的已知问题
 
 ### 我想理解设计决策
 - [PROJECT-SUMMARY.md](./PROJECT-SUMMARY.md) → 关键设计决策
-- [HANDOFF.md](./HANDOFF.md) → 历史决策记录
+- 设计决策 → PROJECT-SUMMARY.md 和组件 README
 - 各组件的 README 和代码注释
 
 ### 我想查看性能指标
@@ -150,7 +147,7 @@
 
 ### 部分文档 ⚠️
 - android/README.md - 基本可用，待补充详细构建步骤
-- HANDOFF.md - 历史完整，但作为日常文档偏长
+- 设备交接记录不随公开源码发布
 
 ### 待完善文档 📝
 - core/README.md - 待创建
@@ -175,7 +172,7 @@
 - 开发计划（DEVELOPMENT-PLAN）：技术负责人
 - 版本控制（VERSION-CONTROL, CHANGELOG）：发布经理
 - 平台文档（各 README）：对应平台开发者
-- 测试证据（verification/）：测试工程师
+- 本地测试报告（不入库）：测试工程师
 
 ### 文档规范
 - 使用 Markdown 格式
@@ -192,7 +189,7 @@
 ### 关键词索引
 - **Smart 出站组**: README.md, PROJECT-SUMMARY.md, converter/ROUTING.md
 - **持久化**: PROJECT-SUMMARY.md, CHANGELOG.md, SMART-BOX-PLAN.md
-- **Android NAT**: HANDOFF.md, CHANGELOG.md, PROJECT-SUMMARY.md
+- **Android NAT**: CHANGELOG.md, PROJECT-SUMMARY.md
 - **FlClash 共存**: linux/README.md, DEVELOPMENT-PLAN.md
 - **版本号**: VERSION-CONTROL.md, scripts/version-manager.sh
 - **发布流程**: VERSION-CONTROL.md, DEVELOPMENT-PLAN.md
@@ -215,7 +212,7 @@
 
 ### 内部团队
 1. 查找相关文档（使用本索引）
-2. 搜索 HANDOFF.md 历史问题
+2. 查看 CHANGELOG.md 和组件 README 中的已知问题
 3. 询问对应平台负责人
 
 ### 外部用户（待建立）

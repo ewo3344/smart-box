@@ -85,7 +85,7 @@ smart-box 是多组件项目，各组件独立迭代但协同发布：
 **回滚方案**:
 ```bash
 # Linux
-cd /home/e/workspace/smart-box/dist
+cd /path/to/smart-box/dist
 ./smart-box-0.1.0-linux-x86_64/uninstall.sh
 
 # Android
@@ -456,7 +456,8 @@ git commit -m "fix(android): resolve crash on startup"
 git checkout main
 git merge --no-ff release/v0.2.0
 git tag -a v0.2.0 -m "Release version 0.2.0"
-git push origin main --tags
+git push origin main
+# 审核每个标签后再单独推送，例如：git push origin v0.2.0
 
 # 5. 合并回 develop
 git checkout develop
@@ -484,7 +485,8 @@ git commit -m "chore: bump version to 0.1.1"
 git checkout main
 git merge --no-ff hotfix/v0.1.1-android-crash
 git tag -a v0.1.1 -m "Hotfix release 0.1.1"
-git push origin main --tags
+git push origin main
+# 审核每个标签后再单独推送，例如：git push origin v0.1.1
 
 git checkout develop
 git merge --no-ff hotfix/v0.1.1-android-crash
@@ -665,7 +667,7 @@ Progress: 0%
 
 ### 🐛 Bug Fixes
 
-- Fixed vivo TUN descriptor close race
+- Fixed Android TUN descriptor close race
 - Fixed Douyin routing collision with TikTok
 - Fixed ad DNS causing EPERM
 - Fixed multicast traffic hijacking
@@ -746,7 +748,7 @@ sha256sum -c SHA256SUMS
 
 ```go
 // go.mod
-module github.com/your-org/smart-box-core
+module github.com/ewo3344/smart-box-core
 
 go 1.25.5
 
@@ -950,7 +952,8 @@ cp ~/.local/state/smart-box/backups/latest/* \
 ## 发布阶段 (Release Day)
 - [ ] 合并 release 分支到 main
 - [ ] 创建 Git tag: `v0.X.Y`
-- [ ] 推送到远程: `git push origin main --tags`
+- [ ] 推送主分支: `git push origin main`
+- [ ] 审核后逐个推送标签: `git push origin <tag>`
 - [ ] 创建 GitHub Release
 - [ ] 上传发布产物
 - [ ] 发布公告 (社区/论坛/邮件列表)
@@ -1071,7 +1074,8 @@ printf 'y\n' | ./scripts/version-manager.sh bump 0.2.0
 git checkout main
 git merge --no-ff release/v0.2.0
 git tag -a v0.2.0 -m "Release version 0.2.0"
-git push origin main --tags
+git push origin main
+# 审核每个标签后再单独推送，例如：git push origin v0.2.0
 
 # 合并回 develop
 git checkout develop

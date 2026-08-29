@@ -67,7 +67,7 @@ TCP/UDP 流量后，才会延迟启动该组的后台探测，手动测速仍立
 CachyOS 当前环境已经具备这些组件。
 
 ```bash
-cd /home/e/workspace/smart-box/dist/smart-box-0.1.0-linux-x86_64
+cd /path/to/smart-box/dist/smart-box-0.1.0-linux-x86_64
 ./install.sh
 smart-box
 ```

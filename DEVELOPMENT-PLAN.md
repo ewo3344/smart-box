@@ -121,7 +121,7 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 **负责**: Android 团队  
 **工时**: 5 天
 
-**描述**: 在 vivo V2352A 上完成完整功能验证
+**描述**: 在授权 Android 测试设备上完成完整功能验证
 
 **自动化入口**: `scripts/android-full-matrix.sh` 已完成；当前无授权真机时
 仅能通过 JVM/静态门禁，设备项保持 `BLOCKED`。
@@ -159,7 +159,7 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 
 **验收标准**:
 - 所有子任务通过，有完整证据文档
-- logcat 记录归档到 `verification/android-full-matrix-YYYYMMDD/`
+- logcat 记录写入本地验证目录（该目录由 `.gitignore` 排除）
 - 零 FATAL/PANIC/DNS EPERM/protect failure
 - 抖音评论发布成功，Telegram 消息收发正常
 
@@ -339,7 +339,7 @@ GUI/网络 E2E 仍需 Windows runner。
 - 所有场景有明确行为定义
 - 故障恢复自动化，无需手动干预
 - 文档记录到 `linux/README.md`
-- 证据归档到 `verification/flclash-coexist-YYYYMMDD/`
+- 验证输出写入本地目录（该目录由 `.gitignore` 排除）
 
 ---
 
@@ -714,7 +714,7 @@ GUI/网络 E2E 仍需 Windows runner。
 
 - **开发机**: 已有（CachyOS 主机）
 - **测试设备**: 
-  - vivo V2352A (Android) - 已有
+  - Android 测试设备 - 需授权并在本地登记
   - Windows VM/物理机 - 需配置
   - 额外 Android 设备（可选）- 社区贡献
 - **树莓派**: 已有，建议准备备用
@@ -757,7 +757,7 @@ GUI/网络 E2E 仍需 Windows runner。
 
 ### A. 相关文档
 - `README.md` - 项目总览
-- `HANDOFF.md` - 历史交接记录
+- 运行时交接材料保存在私有运维空间，不随公开源码发布
 - `SMART-BOX-PLAN.md` - 当前验收计划
 - `linux/README.md` - Linux 客户端说明
 - `converter/README.md` - Converter 说明
@@ -767,7 +767,7 @@ GUI/网络 E2E 仍需 Windows runner。
 
 #### Linux 发布验证
 ```bash
-cd /home/e/workspace/smart-box
+cd /path/to/smart-box
 scripts/verify-release.sh --allow-live
 ```
 
@@ -775,7 +775,8 @@ scripts/verify-release.sh --allow-live
 ```bash
 cd android
 ./gradlew assembleOtherDebug testOtherDebugUnitTest
-scripts/sign-android-device.sh
+../scripts/sign-android-device.sh \
+  ../dist/input.apk ../dist/device-signed.apk /path/to/device.keystore
 ```
 
 #### Converter 测试
