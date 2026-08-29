@@ -577,13 +577,21 @@ ui_dump() {
     local clean="$OUT_DIR/${name}-${RUN_ID}.xml"
     local rc=1
     local attempt
-    for attempt in 1 2 3; do
+    for attempt in 1 2 3 4 5; do
         if adb_timeout_call shell uiautomator dump /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 \
             && adb_timeout_call exec-out cat /sdcard/smart-box-matrix-window.xml > "$raw" 2>/dev/null; then
-            rc=0
-            break
+            if grep -Fq "$PACKAGE_NAME" "$raw" 2>/dev/null; then
+                rc=0
+                break
+            fi
+            # Status-bar/systemui dumps hide the app hierarchy on this device.
+            report_line "UI_DUMP=$name ATTEMPT=$attempt PACKAGE_MISSING"
+            adb_call shell cmd statusbar collapse >/dev/null 2>&1 || true
+            adb_call shell am start -W -n "$ACTIVITY_NAME" >/dev/null 2>&1 || true
+            rc=1
+        else
+            rc=$?
         fi
-        rc=$?
         sleep 1
     done
     adb_timeout_call shell rm -f /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 || true
@@ -729,12 +737,17 @@ runtime_active_from_files() {
         package_seen=1
     fi
     # A bound VPNService record is present on the dashboard without a TUN.
-    # ServiceRecord/bound=true must not count as an active runtime, or the
-    # gate looks for Stop while the UI still shows Start.
+    # startForegroundCount is cumulative and stays >=1 after a successful
+    # UI stop; only current-state flags mean the runtime is still up.
     if [[ -s "$LAST_SERVICE_FILE" ]] \
         && grep -Eqi "$target_package" "$LAST_SERVICE_FILE" \
-        && grep -Eqi 'VPNService|ProxyService' "$LAST_SERVICE_FILE" \
-        && grep -Eqi 'isForeground=true|startRequested=true|startForegroundCount=[1-9][0-9]*' "$LAST_SERVICE_FILE"; then
+        && awk '
+            BEGIN { IGNORECASE=1 }
+            /^[[:space:]]*\* ServiceRecord/ { vpn = ($0 ~ /VPNService|ProxyService/) }
+            vpn && /isForeground=true/ { found = 1 }
+            vpn && /startRequested=true/ { found = 1 }
+            END { exit found ? 0 : 1 }
+        ' "$LAST_SERVICE_FILE"; then
         package_seen=1
     fi
     if [[ -s "$LAST_PROCESS_FILE" ]] \
@@ -791,6 +804,8 @@ run_wait_stopped_selftest() {
                     printf '%s\n' \
                         'ACTIVITY MANAGER SERVICES (dumpsys activity services)' \
                         '* ServiceRecord{test} io.nekohasekai.sfa.smartbox/io.nekohasekai.sfa.bg.VPNService' \
+                        'isForeground=true' \
+                        'startRequested=true' \
                         'startForegroundCount=1'
                     ;;
                 *'dumpsys vpn'*) printf '%s\n' "Can't find service: vpn" ;;
@@ -820,7 +835,8 @@ run_wait_stopped_selftest() {
                 printf '%s\n' \
                     'ACTIVITY MANAGER SERVICES (dumpsys activity services)' \
                     '* ServiceRecord{test} io.nekohasekai.sfa.smartbox/io.nekohasekai.sfa.bg.VPNService' \
-                    'startForegroundCount=0'
+                    'startForegroundCount=1' \
+                    'startRequested=false delayedStop=false'
                 ;;
             *'dumpsys vpn'*) printf '%s\n' "Can't find service: vpn" ;;
             *) printf '%s\n' ok ;;
@@ -830,10 +846,10 @@ run_wait_stopped_selftest() {
     rc=0
     wait_runtime_state stopped || rc=$?
     if [[ "$rc" -ne 0 ]]; then
-        printf '%s\n' "SELFTEST FAIL: idle VPNService should count as stopped, rc=$rc"
+        printf '%s\n' "SELFTEST FAIL: post-stop VPNService with startForegroundCount=1 must count as stopped, rc=$rc"
         exit 1
     fi
-    printf '%s\n' 'SELFTEST PASS: adb loss is not STOP; idle service is STOP'
+    printf '%s\n' 'SELFTEST PASS: adb loss is not STOP; post-stop count=1 is STOP'
     exit 0
 }
 

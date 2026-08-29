@@ -32,5 +32,5 @@ class AndroidMatrixWaitTest(unittest.TestCase):
             0,
             output,
         )
-        self.assertIn("SELFTEST PASS: adb loss is not STOP; idle service is STOP", output)
+        self.assertIn("SELFTEST PASS: adb loss is not STOP; post-stop count=1 is STOP", output)
         self.assertNotIn("SELFTEST FAIL", output)
