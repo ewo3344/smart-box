@@ -38,6 +38,36 @@ are smart-box-specific integration code. They invoke or consume the modified
 core but do not change the licensing or attribution requirements of the
 upstream components.
 
+## Submodule Publish Flow
+
+`core/` and `android/` are gitlinks to the public forks above, not to SagerNet
+baselines. Daily work may sit on an uncommitted SagerNet-based worktree; that
+tree is not the published pointer.
+
+Publish in one direction only:
+
+1. 工作树 — keep smart-box changes in the local `core/` and `android/` checkouts.
+2. 快照 — create a commit on the fork history that contains those changes.
+3. push fork — `git push` that snapshot to `ewo3344/smart-box-core` or
+   `ewo3344/smart-box-android` so the commit is reachable as a ref.
+4. 更新 gitlink — only after `scripts/publish-submodules.sh --check` passes,
+   move the superproject gitlink to that fork snapshot.
+
+`scripts/publish-submodules.sh --check` is fail-closed:
+
+- A gitlink SHA that `git ls-remote` on the fork cannot see is rejected.
+- A core pointer whose tree lacks `protocol/group/smart.go` is rejected.
+- An Android pointer whose `app/build.gradle.kts` lacks
+  `applicationId = "io.nekohasekai.sfa.smartbox"` is rejected.
+
+Do not use `git add android`, `git add core`, `git add .`, `git add -A`, or
+`git commit -a`. Those commands can rewind the public gitlink onto a SagerNet
+baseline with no smart-box code. Do not run `git submodule update` to “clean”
+a dirty smart worktree.
+
+HEAD gitlinks must remain the fork snapshots that contain smart code
+(`6039b0bd…` / `fd6e4589…` or later fork-reachable successors).
+
 ## Public Source Policy
 
 This source repository intentionally excludes device signing keys, private

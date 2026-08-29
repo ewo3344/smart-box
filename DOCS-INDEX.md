@@ -15,7 +15,9 @@
 - **[DEVELOPMENT-PLAN.md](./DEVELOPMENT-PLAN.md)** - 完整开发计划，里程碑和任务列表
 - **[SMART-BOX-PLAN.md](./SMART-BOX-PLAN.md)** - 当前验收计划和门禁清单
 - **[VERSION-CONTROL.md](./VERSION-CONTROL.md)** - 版本控制策略和发布流程
+- **[UPSTREAMS.md](./UPSTREAMS.md)** - 上游归属与 submodule 单向发布流
 - **[CHANGELOG.md](./CHANGELOG.md)** - 版本变更历史
+- **[docs/MANUAL-MATRIX-T001.md](./docs/MANUAL-MATRIX-T001.md)** - Android T001 人工签核矩阵
 
 ### 快速参考
 - **[QUICK-REFERENCE.md](./QUICK-REFERENCE.md)** - 常用命令和故障排查一页速查
