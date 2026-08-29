@@ -6,6 +6,12 @@ android/app/release.keystore
 *.key
 *.p12
 *.pfx
+*.asc
+*.gpg
+id_rsa
+id_ed25519
+id_ecdsa
+.age
 service-account-credentials.json
 .env
 .env.*
@@ -17,6 +23,10 @@ config.json
 *.db
 *.db-shm
 *.db-wal
+*.sqlite
+*.sqlite3
+*.sqlite-shm
+*.sqlite-wal
 cache/
 runtime.json
 profile.json
@@ -37,6 +47,9 @@ build/
 *.dll
 *.exe
 *.idsig
+*.msix
+*.msixbundle
+*.pdb
 *.zip
 *.tar.gz
 converter/smart-box-converter-linux-*
@@ -49,6 +62,8 @@ crash-fix-*/
 *-delivery-*/
 .git-init.lock
 smart-box-handoff-*.zip
+HANDOFF.md
+CACHYOS-CODEX-PROMPT.md
 
 # Editor, Python, Go, and temporary files
 __pycache__/

@@ -39,3 +39,6 @@ Makefile text eol=lf
 *.zip binary
 *.tar.gz binary
 *.db binary
+*.srs binary
+*.sqlite binary
+*.sqlite3 binary
