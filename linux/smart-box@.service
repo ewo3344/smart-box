@@ -1,0 +1,45 @@
+[Unit]
+Description=smart-box TUN proxy core for %i
+Documentation=file:///usr/local/share/doc/smart-box/README.md
+Wants=network-online.target smart-box-watchdog@%i.service
+After=network-online.target
+
+[Service]
+Type=simple
+User=%i
+UMask=0077
+Environment=HOME=/home/%i
+Environment=XDG_CONFIG_HOME=/home/%i/.config
+Environment=XDG_STATE_HOME=/home/%i/.local/state
+Environment=SMART_BOX_SERVICE_UNIT=smart-box@%i.service
+ExecStartPre=+/usr/local/bin/smart-box-profile cleanup --service-lifecycle
+ExecStartPre=/usr/local/bin/smart-box-profile prepare --require-no-flclash --quiet
+ExecStartPre=/usr/local/bin/smart-box-profile desktop-proxy install
+ExecStartPre=+/usr/local/bin/smart-box-profile firewall install
+ExecStart=/usr/local/bin/smart-box-profile run
+ExecStartPost=+/usr/local/bin/smart-box-profile watchdog --startup
+ExecStartPost=+/usr/local/bin/smart-box-profile dns install
+ExecStopPost=+/usr/local/bin/smart-box-profile cleanup --verify-direct --service-lifecycle
+ExecStopPost=/usr/local/bin/smart-box-profile desktop-proxy restore --service-lifecycle
+Restart=on-abnormal
+RestartSec=3s
+TimeoutStartSec=100s
+TimeoutStopSec=60s
+KillMode=mixed
+LimitNOFILE=1048576
+CapabilityBoundingSet=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW CAP_SYS_PTRACE
+AmbientCapabilities=CAP_DAC_READ_SEARCH CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW CAP_SYS_PTRACE
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/%i/.config /home/%i/.config/smart-box /home/%i/.config/kioslaverc /home/%i/.local/state/smart-box
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictSUIDSGID=true
+LockPersonality=true
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,27 @@
+[Unit]
+Description=smart-box proxy using Raspberry Pi aggregated subscription
+After=network-online.target smart-box-converter.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/smart-box-wrapper
+Restart=on-failure
+RestartSec=5s
+KillMode=control-group
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_ADMIN CAP_NET_RAW CAP_NET_BIND_SERVICE
+NoNewPrivileges=false
+ProtectHome=true
+ProtectSystem=strict
+RuntimeDirectory=smart-box
+RuntimeDirectoryMode=0700
+StateDirectory=smart-box
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/smart-box
+ReadWritePaths=/run/smart-box /var/lib/smart-box
+PrivateTmp=true
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

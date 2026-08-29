@@ -1,0 +1,32 @@
+[Unit]
+Description=force fail-open cleanup for smart-box %i
+Documentation=file:///usr/local/share/doc/smart-box/README.md
+
+[Service]
+Type=oneshot
+User=root
+UMask=0077
+Environment=HOME=/home/%i
+Environment=XDG_CONFIG_HOME=/home/%i/.config
+Environment=XDG_STATE_HOME=/home/%i/.local/state
+Environment=SMART_BOX_SERVICE_UNIT=smart-box@%i.service
+ExecStartPre=/usr/bin/systemctl --runtime mask -- smart-box@%i.service smart-box-watchdog@%i.service
+ExecStartPre=-/usr/bin/systemctl kill --kill-whom=all --signal=SIGKILL -- smart-box@%i.service smart-box-watchdog@%i.service
+ExecStart=/usr/local/bin/smart-box-profile cleanup --service-lifecycle
+TimeoutStartSec=60s
+CapabilityBoundingSet=CAP_NET_ADMIN
+AmbientCapabilities=CAP_NET_ADMIN
+NoNewPrivileges=true
+PrivateDevices=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=-/etc/ufw /home/%i/.config /home/%i/.config/smart-box /home/%i/.config/kioslaverc /home/%i/.local/state/smart-box
+ProtectControlGroups=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true

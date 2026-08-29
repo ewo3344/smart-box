@@ -1,0 +1,13 @@
+#!/bin/sh
+set -eu
+
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+package_lib="$script_dir/../lib"
+if [ -f "$package_lib/smart_box_linux.py" ]; then
+    lib_dir=$(CDPATH= cd -- "$package_lib" && pwd)
+else
+    lib_dir=${SMART_BOX_LIB_DIR:-/usr/local/lib/smart-box}
+fi
+
+export PYTHONPATH="$lib_dir${PYTHONPATH:+:$PYTHONPATH}"
+exec /usr/bin/python3 "$lib_dir/smart_box_linux.py" "$@"

@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Version=1.0
+Name=smart-box
+GenericName=Smart Routing Client
+Comment=Local TUN client for smart-box routing profiles
+Exec=/usr/local/bin/smart-box
+TryExec=/usr/local/bin/smart-box
+Icon=smart-box
+Terminal=false
+StartupNotify=false
+Categories=Network;Utility;
+Keywords=proxy;vpn;tun;sing-box;smart;
+StartupWMClass=smart-box

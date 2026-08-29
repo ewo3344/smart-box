@@ -1,0 +1,67 @@
+# Local credentials and machine-specific configuration
+android/app/release.keystore
+*.keystore
+*.jks
+*.pem
+*.key
+*.p12
+*.pfx
+service-account-credentials.json
+.env
+.env.*
+local.properties
+config.json
+*-config.json
+
+# Runtime state and generated profiles
+*.db
+*.db-shm
+*.db-wal
+cache/
+runtime.json
+profile.json
+settings.json
+
+# Build outputs and dependency caches
+dist/
+build/
+**/build/
+**/.gradle/
+**/bin/
+**/obj/
+*.apk
+*.aab
+*.aar
+*.jar
+*.so
+*.dll
+*.exe
+*.idsig
+*.zip
+*.tar.gz
+converter/smart-box-converter-linux-*
+converter/*.linux-*
+
+# Local validation, recovery snapshots, and historical handoffs
+verification/
+crash-fix-*/
+*-fix-*/
+*-delivery-*/
+.git-init.lock
+smart-box-handoff-*.zip
+
+# Editor, Python, Go, and temporary files
+__pycache__/
+*.py[cod]
+*.test
+*.out
+*.tmp
+*.bak
+*.orig
+*.log
+*.swp
+*.swo
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
