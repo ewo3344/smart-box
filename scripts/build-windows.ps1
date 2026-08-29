@@ -1,58 +1,84 @@
+param(
+    [string]$GoCommand = "go"
+)
+
 $ErrorActionPreference = "Stop"
-$core = Join-Path $PSScriptRoot "..\core"
-$dist = Join-Path $PSScriptRoot "..\dist"
-$windows = Join-Path $PSScriptRoot "..\windows"
-$android = Join-Path $PSScriptRoot "..\android"
-$versionFile = Join-Path $PSScriptRoot "..\VERSION"
-$androidVersionFile = Join-Path $android "version.properties"
-$goBin = "C:\Program Files\Go\bin"
-$toolchainFile = Join-Path $PSScriptRoot "..\TOOLCHAIN_VERSION"
+$Root = Split-Path -Parent $PSScriptRoot
+$Core = Join-Path $Root "core"
+$WindowsClient = Join-Path $Root "windows"
+$Dist = Join-Path $Root "dist"
+$ToolchainFile = Join-Path $Root "TOOLCHAIN_VERSION"
 
-if (-not (Test-Path $versionFile)) {
-    throw "Product version is missing: $versionFile"
-}
-$smartVersion = (Get-Content $versionFile -TotalCount 1).Trim()
-if ($smartVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$') {
-    throw "Invalid product version: $smartVersion"
-}
-if (-not (Test-Path $androidVersionFile)) {
-    throw "Android version properties are missing: $androidVersionFile"
-}
-$upstreamVersion = ((Get-Content $androidVersionFile | Where-Object { $_ -match '^UPSTREAM_VERSION=' }) -replace '^UPSTREAM_VERSION=', '').Trim()
-if ([string]::IsNullOrWhiteSpace($upstreamVersion)) {
-    throw "UPSTREAM_VERSION is missing: $androidVersionFile"
-}
-$releaseLabel = "$smartVersion-core-$upstreamVersion"
-$publish = Join-Path $dist "smart-box-$releaseLabel-windows-x64"
-$archive = Join-Path $dist "smart-box-$releaseLabel-windows-x64.zip"
-
-if (-not (Test-Path $toolchainFile)) {
-    throw "Go toolchain pin is missing: $toolchainFile"
-}
-$toolchain = (Get-Content $toolchainFile -Raw).Trim()
-if ($toolchain -notmatch '^go[0-9]+\.[0-9]+\.[0-9]+$') {
-    throw "Invalid Go toolchain pin in $toolchainFile`: $toolchain"
-}
-$env:GOTOOLCHAIN = $toolchain
-
-if (-not (Test-Path (Join-Path $goBin "go.exe"))) {
-    throw "Go was not found at $goBin. Install a Go launcher for $toolchain or newer."
+function Require-Command([string]$Name) {
+    if (-not (Get-Command $Name -ErrorAction SilentlyContinue)) {
+        throw "Required command was not found on PATH: $Name"
+    }
 }
 
-New-Item -ItemType Directory -Force $publish | Out-Null
-$env:Path = "$goBin;" + $env:Path
-Push-Location $core
+function Read-VersionProperty([string]$Name) {
+    $properties = Join-Path $Root "android\version.properties"
+    $line = Get-Content $properties | Where-Object { $_ -match "^$([regex]::Escape($Name))=(.+)$" } | Select-Object -First 1
+    if (-not $line) {
+        throw "Missing $Name in $properties"
+    }
+    return ($line -replace "^$([regex]::Escape($Name))=", "").Trim()
+}
+
+Require-Command $GoCommand
+Require-Command "dotnet"
+if (-not (Test-Path (Join-Path $Core ".git"))) {
+    throw "The core submodule is not initialized. Run: git submodule update --init --recursive"
+}
+
+$SmartVersion = (Get-Content (Join-Path $Root "VERSION") -Raw).Trim()
+if ($SmartVersion -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$') {
+    throw "Invalid product version: $SmartVersion"
+}
+if (-not (Test-Path $ToolchainFile)) {
+    throw "Go toolchain pin is missing: $ToolchainFile"
+}
+$Toolchain = (Get-Content $ToolchainFile -Raw).Trim()
+if ($Toolchain -notmatch '^go[0-9]+\.[0-9]+\.[0-9]+$') {
+    throw "Invalid Go toolchain pin: $Toolchain"
+}
+$env:GOTOOLCHAIN = $Toolchain
+$UpstreamVersion = Read-VersionProperty "UPSTREAM_VERSION"
+$Publish = Join-Path $Dist "smart-box-$SmartVersion-core-$UpstreamVersion-windows-x64"
+$Archive = "$Publish.zip"
+$Staging = Join-Path $Dist (".smart-box-windows-" + [Guid]::NewGuid().ToString("N"))
+
+New-Item -ItemType Directory -Force $Dist | Out-Null
+New-Item -ItemType Directory -Force $Staging | Out-Null
 try {
-    go build -tags "with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api" -trimpath -ldflags "-X github.com/sagernet/sing-box/constant.Version=$releaseLabel -s -w -buildid=" -o (Join-Path $publish "smart-box-core.exe") .\cmd\sing-box
+Push-Location $Core
+try {
+    $ldflags = "-X github.com/sagernet/sing-box/constant.Version=smart-box-$SmartVersion-core-$UpstreamVersion -s -w -buildid="
+    & $GoCommand build -tags "with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api" -trimpath -ldflags $ldflags -o (Join-Path $Staging "smart-box-core.exe") .\cmd\sing-box
+    if ($LASTEXITCODE -ne 0) { throw "sing-box core build failed" }
 } finally {
     Pop-Location
 }
 
-Push-Location $windows
+Push-Location $WindowsClient
 try {
-    dotnet publish -c Release -r win-x64 --self-contained true -o $publish
+    dotnet publish -c Release -r win-x64 --self-contained true -o $Staging
+    if ($LASTEXITCODE -ne 0) { throw "Windows client publish failed" }
 } finally {
     Pop-Location
 }
 
-Compress-Archive -Path (Join-Path $publish "*") -DestinationPath $archive -Force
+if (Test-Path $Publish) {
+    Remove-Item -Recurse -Force $Publish
+}
+Move-Item -LiteralPath $Staging -Destination $Publish
+if (Test-Path $Archive) {
+    Remove-Item -Force $Archive
+}
+Compress-Archive -Path (Join-Path $Publish "*") -DestinationPath $Archive -Force
+Write-Output "WINDOWS_PACKAGE=$Publish"
+Write-Output "WINDOWS_ARCHIVE=$Archive"
+} finally {
+    if (Test-Path $Staging) {
+        Remove-Item -Recurse -Force $Staging
+    }
+}

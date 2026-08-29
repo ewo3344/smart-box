@@ -49,6 +49,8 @@ umask 077
 mkdir -p "$OUT_DIR"
 REPORT="$OUT_DIR/REPORT.md"
 : > "$REPORT"
+CAPTURE_FAILURE_MARKER="$OUT_DIR/.capture-failed"
+rm -f -- "$CAPTURE_FAILURE_MARKER"
 ADB_CMD=("$ADB_BIN")
 [[ -n "$SERIAL" ]] && ADB_CMD+=( -s "$SERIAL" )
 CAPTURE_FAILED=0
@@ -71,7 +73,33 @@ capture() {
     local name=$1; shift
     local raw="$OUT_DIR/$name.raw" clean="$OUT_DIR/$name.log" rc
     if "$@" > "$raw" 2>&1; then rc=0; else rc=$?; fi
-    if [[ "$rc" -ne 0 ]]; then CAPTURE_FAILED=1; fi
+    if [[ "$rc" -ne 0 ]]; then
+        CAPTURE_FAILED=1
+        : > "$CAPTURE_FAILURE_MARKER"
+    fi
+    redact "$raw" "$clean"
+    if [[ "$KEEP_RAW" -eq 1 ]]; then chmod 600 "$raw"; else rm -f -- "$raw"; fi
+    printf '%s\t%s\t%s\n' "$name" "$rc" "$clean" >> "$OUT_DIR/status.tsv"
+    return 0
+}
+
+capture_stream() {
+    local name=$1; shift
+    local raw="$OUT_DIR/$name.raw" clean="$OUT_DIR/$name.log" rc expected_stop=0 pid
+    "$@" > "$raw" 2>&1 &
+    pid=$!
+    sleep "$DURATION"
+    if kill -0 "$pid" 2>/dev/null; then
+        expected_stop=1
+        kill -TERM "$pid" 2>/dev/null || true
+    fi
+    if wait "$pid"; then rc=0; else rc=$?; fi
+    # A stream intentionally terminated at the requested duration is a
+    # successful bounded capture; an early process exit remains a failure.
+    if [[ "$rc" -ne 0 && "$expected_stop" -eq 0 ]]; then
+        CAPTURE_FAILED=1
+        : > "$CAPTURE_FAILURE_MARKER"
+    fi
     redact "$raw" "$clean"
     if [[ "$KEEP_RAW" -eq 1 ]]; then chmod 600 "$raw"; else rm -f -- "$raw"; fi
     printf '%s\t%s\t%s\n' "$name" "$rc" "$clean" >> "$OUT_DIR/status.tsv"
@@ -137,13 +165,11 @@ capture interfaces "${ADB_CMD[@]}" shell ip -o addr show
 
 if [[ "$DURATION" -gt 0 ]]; then
     if [[ -n "$SINCE" ]]; then
-        capture logcat "${ADB_CMD[@]}" logcat -v threadtime -T "$SINCE"
+        capture_stream logcat "${ADB_CMD[@]}" logcat -v threadtime -T "$SINCE"
     else
-        capture logcat "${ADB_CMD[@]}" logcat -v threadtime
+        capture_stream logcat "${ADB_CMD[@]}" logcat -v threadtime
     fi &
     collector_pid=$!
-    sleep "$DURATION"
-    kill "$collector_pid" 2>/dev/null || true
     wait "$collector_pid" 2>/dev/null || true
 else
     if [[ -n "$SINCE" ]]; then
@@ -151,6 +177,10 @@ else
     else
         capture logcat "${ADB_CMD[@]}" logcat -d -v threadtime -t 5000
     fi
+fi
+
+if [[ -e "$CAPTURE_FAILURE_MARKER" ]]; then
+    CAPTURE_FAILED=1
 fi
 
 # Keep a focused view for routine bug reports while retaining the complete

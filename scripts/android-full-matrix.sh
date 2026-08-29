@@ -19,6 +19,7 @@ SERIAL=""
 APK=""
 KEEP_LOGS=0
 POLL_SECONDS=${SMART_BOX_ANDROID_POLL_SECONDS:-45}
+UI_DUMP_TIMEOUT=${SMART_BOX_UI_DUMP_TIMEOUT_SECONDS:-8}
 TMP_HOME=""
 GRADLE_CACHE="${SMART_BOX_GRADLE_USER_HOME:-${GRADLE_USER_HOME:-${HOME:-$ROOT}/.gradle}}"
 REPORT=""
@@ -55,6 +56,7 @@ Options:
 Environment:
   ADB=PATH                         adb executable (default: adb)
   SMART_BOX_ANDROID_POLL_SECONDS  lifecycle polling timeout (default: 45)
+  SMART_BOX_UI_DUMP_TIMEOUT_SECONDS  timeout for each UIAutomator dump (default: 8)
   SMART_BOX_SKIP_STATIC=1         record static gate as MANUAL_REQUIRED (still non-zero)
 EOF
 }
@@ -66,6 +68,7 @@ fail() {
 
 [[ "$RUN_DATE" =~ ^[0-9]{8}$ ]] || fail "SMART_BOX_MATRIX_DATE must be YYYYMMDD"
 [[ "$POLL_SECONDS" =~ ^[1-9][0-9]*$ ]] || fail "SMART_BOX_ANDROID_POLL_SECONDS must be a positive integer"
+[[ "$UI_DUMP_TIMEOUT" =~ ^[1-9][0-9]*$ ]] || fail "SMART_BOX_UI_DUMP_TIMEOUT_SECONDS must be a positive integer"
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -144,7 +147,22 @@ redact_file() {
         : > "$output"
         return 0
     fi
-    if ! LC_ALL=C sed -E \
+    # UIAutomator output is XML.  Keep quotes and use XML-safe replacement
+    # text; a generic key/value redactor would turn password="false" into an
+    # invalid unquoted attribute and make dynamic UI lookup fail.
+    if [[ "$output" == *.xml ]]; then
+        if ! LC_ALL=C sed -E \
+            -e 's#((password|passwd|token|secret|api[_-]?key|cookie|authorization)[[:space:]]*=[[:space:]]*)"[^"]*"#\1"REDACTED"#Ig' \
+            -e "s#((password|passwd|token|secret|api[_-]?key|cookie|authorization)[[:space:]]*=[[:space:]]*)'[^']*'#\\1'REDACTED'#Ig" \
+            -e 's#(Authorization:[[:space:]]*Bearer[[:space:]]+)[^[:space:]"<]+#\1REDACTED#Ig' \
+            -e 's#(https?://[^[:space:]?"]+)[?][^[:space:]"<]+#\1?REDACTED#g' \
+            -e 's#((ss|ssr|vmess|vless|trojan)://)[^[:space:]"<]+#\1REDACTED#Ig' \
+            -e 's#/data/(data|user)/[^[:space:]"<]+#/data/REDACTED#g' \
+            -e 's#/home/[^[:space:]"<]+#/home/REDACTED#g' \
+            "$input" > "$output"; then
+            printf '%s\n' '<redaction failed; XML capture was discarded>' > "$output"
+        fi
+    elif ! LC_ALL=C sed -E \
         -e 's#(Authorization:[[:space:]]*Bearer[[:space:]]+)[^[:space:]]+#\1<redacted>#Ig' \
         -e 's#((password|passwd|token|secret|api[_-]?key|cookie|authorization)[[:space:]]*[=:][[:space:]]*)[^[:space:]]+#\1<redacted>#Ig' \
         -e 's#(https?://[^[:space:]?]+)[?][^[:space:]]+#\1?<redacted>#g' \
@@ -209,6 +227,11 @@ set_adb_command() {
 
 adb_call() {
     "${ADB_CMD[@]}" "$@"
+}
+
+adb_timeout_call() {
+    command -v timeout >/dev/null 2>&1 || return 127
+    timeout --signal=TERM "$UI_DUMP_TIMEOUT" "${ADB_CMD[@]}" "$@"
 }
 
 capture_adb() {
@@ -551,12 +574,13 @@ ui_dump() {
     local raw="$OUT_DIR/${name}-${RUN_ID}.xml.raw"
     local clean="$OUT_DIR/${name}-${RUN_ID}.xml"
     local rc
-    if adb_call shell uiautomator dump /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 \
-        && adb_call exec-out cat /sdcard/smart-box-matrix-window.xml > "$raw" 2>/dev/null; then
+    if adb_timeout_call shell uiautomator dump /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 \
+        && adb_timeout_call exec-out cat /sdcard/smart-box-matrix-window.xml > "$raw" 2>/dev/null; then
         rc=0
     else
         rc=$?
     fi
+    adb_timeout_call shell rm -f /sdcard/smart-box-matrix-window.xml >/dev/null 2>&1 || true
     if [[ "$rc" -eq 0 && -s "$raw" ]]; then
         redact_file "$raw" "$clean"
         [[ "$KEEP_LOGS" -eq 1 ]] || rm -f -- "$raw"
@@ -664,10 +688,13 @@ runtime_active_from_files() {
         && grep -Eqi 'established|connected|running|active|mInterface[=:][[:space:]]*[^[:space:]]*tun|tun[0-9]' "$LAST_VPN_FILE"; then
         package_seen=1
     fi
+    # A bound VPNService record is present on the dashboard without a TUN.
+    # ServiceRecord/bound=true must not count as an active runtime, or the
+    # gate looks for Stop while the UI still shows Start.
     if [[ -s "$LAST_SERVICE_FILE" ]] \
         && grep -Eqi "$target_package" "$LAST_SERVICE_FILE" \
         && grep -Eqi 'VPNService|ProxyService' "$LAST_SERVICE_FILE" \
-        && grep -Eqi 'started|running|ServiceRecord|isRunning=true|bound=true' "$LAST_SERVICE_FILE"; then
+        && grep -Eqi 'isForeground=true|startRequested=true|startForegroundCount=[1-9][0-9]*' "$LAST_SERVICE_FILE"; then
         package_seen=1
     fi
     if [[ -s "$LAST_PROCESS_FILE" ]] \
@@ -703,7 +730,7 @@ check_error_signatures() {
     local file
     # Scope the scan to this invocation.  A date directory may contain prior
     # runs; an old failure must not poison a later clean run.
-    for file in "$OUT_DIR"/*-"$RUN_ID".log "$OUT_DIR"/*-"$RUN_ID".xml "$OUT_DIR"/*-"$RUN_ID".*.log; do
+    for file in "$OUT_DIR"/logcat*-"$RUN_ID".log; do
         [[ -f "$file" ]] || continue
         if grep -Eqi 'FATAL EXCEPTION|panic:|fdsan|operation not permitted|DNS.*EPERM|protect.*fail' "$file"; then
             report_line "ERROR_SIGNATURE=$file"

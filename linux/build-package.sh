@@ -9,14 +9,33 @@ version_file="$project_dir/VERSION"
     printf '%s\n' "missing product version: $version_file" >&2
     exit 1
 }
-product_version=$(sed -n '1p' "$version_file" | tr -d '[:space:]')
-printf '%s\n' "$product_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$' || {
-    printf '%s\n' "invalid product version: $product_version" >&2
+version=$(sed -n '1p' "$version_file" | tr -d '[:space:]')
+valid_version=1
+printf '%s\n' "$version" | grep -Eq '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$' || valid_version=0
+if [ "$valid_version" -eq 1 ] && printf '%s\n' "$version" | grep -q -- '-'; then
+    prerelease=${version#*-}
+    prerelease=${prerelease%%+*}
+    old_ifs=$IFS
+    IFS=.
+    # POSIX sh has no arrays; iterate over the dot-separated identifiers.
+    for identifier in $prerelease; do
+        if printf '%s\n' "$identifier" | grep -Eq '^[0-9]+$' &&
+           printf '%s\n' "$identifier" | grep -Eq '^0[0-9]'; then
+            valid_version=0
+            break
+        fi
+    done
+    IFS=$old_ifs
+fi
+if [ "$valid_version" -ne 1 ]; then
+    printf '%s\n' "invalid product version: $version" >&2
     exit 1
-}
-package_name="smart-box-${product_version}-linux-x86_64"
+fi
+package_name="smart-box-${version}-linux-x86_64"
 package_dir="$dist_dir/$package_name"
 core="$package_dir/bin/smart-box-core"
+
+mkdir -p "$dist_dir"
 
 [ -x "$core" ] || {
     printf '%s\n' "missing prebuilt core: $core" >&2
@@ -91,19 +110,40 @@ install -m 0644 "$source_dir/README.md" "$staging_dir/README.md"
     fi
 )
 
-backup_root=$(mktemp -d "$dist_dir/.smart-box-backup.XXXXXX")
-mv "$package_dir" "$backup_root/$package_name"
+if [ -e "$package_dir" ]; then
+    backup_root=$(mktemp -d "$dist_dir/.smart-box-backup.XXXXXX")
+    mv "$package_dir" "$backup_root/$package_name"
+fi
 if ! mv "$staging_dir" "$package_dir"; then
-    mv "$backup_root/$package_name" "$package_dir" || true
+    if [ -n "$backup_root" ]; then
+        mv "$backup_root/$package_name" "$package_dir" || true
+    fi
     printf '%s\n' 'could not replace smart-box package directory' >&2
     exit 1
 fi
-rm -rf -- "$backup_root"
-backup_root=""
+if [ -n "$backup_root" ]; then
+    rm -rf -- "$backup_root"
+    backup_root=""
+fi
 rmdir "$staging_root"
 staging_root=""
 trap - 0 1 2 15
 
 tarball="$dist_dir/$package_name.tar.gz"
-tar -C "$dist_dir" -czf "$tarball" "$package_name"
+source_date_epoch=${SOURCE_DATE_EPOCH:-0}
+case "$source_date_epoch" in
+    *[!0-9]*|'')
+        printf '%s\n' "invalid SOURCE_DATE_EPOCH: $source_date_epoch" >&2
+        exit 1
+        ;;
+esac
+tar --sort=name \
+    --mtime="@$source_date_epoch" \
+    --owner=0 \
+    --group=0 \
+    --numeric-owner \
+    --pax-option=delete=atime,delete=ctime \
+    -C "$dist_dir" \
+    -czf "$tarball" \
+    "$package_name"
 printf '%s\n' "$package_dir" "$tarball"

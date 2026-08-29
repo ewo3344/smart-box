@@ -87,6 +87,12 @@ run_step() {
     fi
 }
 
+check_shell_syntax() {
+    for script do
+        sh -n "$script"
+    done
+}
+
 blocked_step() {
     name=$1
     reason=$2
@@ -97,11 +103,52 @@ blocked_step() {
     blocked=$((blocked + 1))
 }
 
+run_env_gate() {
+    name=$1
+    shift
+    log="$out/$name.log"
+    printf '>>> %s\n' "$name"
+    printf '$'
+    printf ' %s' "$@"
+    printf '\n'
+    if "$@" >"$log" 2>&1; then
+        printf 'PASS  %s\n' "$name"
+        record "$name" PASS "$log"
+    else
+        rc=$?
+        if [ "$rc" -eq 2 ]; then
+            printf 'BLOCKED %s (exit 2)\n' "$name"
+            record "$name" BLOCKED "$log"
+            blocked=$((blocked + 1))
+        else
+            printf 'FAIL  %s (exit %s)\n' "$name" "$rc"
+            record "$name" "FAIL($rc)" "$log"
+            failed=$((failed + 1))
+        fi
+    fi
+}
+
+authorized_android_device() {
+    adb_bin=${ADB:-adb}
+    command -v "$adb_bin" >/dev/null 2>&1 || return 1
+    "$adb_bin" devices 2>/dev/null | awk 'NR > 1 && $2 == "device" { found=1 } END { exit found ? 0 : 1 }'
+}
+
+windows_runner_available() {
+    [ "${SMART_BOX_RUN_WINDOWS:-0}" = 1 ] && return 0
+    case "$(uname -s 2>/dev/null)" in
+        MINGW*|MSYS*|CYGWIN*|Windows_NT) return 0 ;;
+    esac
+    return 1
+}
+
 test_home=$(mktemp -d "${TMPDIR:-/tmp}/smart-box-release.XXXXXX")
 trap 'rm -rf -- "$test_home"' EXIT HUP INT TERM
 mkdir -p "$test_home/.config" "$test_home/.local/state"
 
 run_step linux_compile python3 -m compileall -q "$root/linux"
+run_step version_consistency "$root/scripts/version-manager.sh" check
+run_step diff_check git -C "$root" diff --check
 run_step linux_unit env \
     HOME="$test_home" \
     XDG_CONFIG_HOME="$test_home/.config" \
@@ -109,14 +156,23 @@ run_step linux_unit env \
     PYTHONPATH="$root/linux" \
     QT_QPA_PLATFORM=offscreen \
     python3 -m unittest discover -s "$root/linux/tests" -p 'test*.py' -q
-run_step shell_syntax sh -n \
+run_step shell_syntax check_shell_syntax \
     "$root/linux/build-package.sh" "$root/linux/install.sh" \
     "$root/linux/uninstall.sh" "$root/linux/smart-box" \
     "$root/linux/smart-box-profile" "$root/scripts/init-git.sh" \
-    "$root/scripts/sign-android-device.sh" "$root/scripts/verify-raspberry-pi.sh" \
+    "$root/scripts/build-linux.sh" "$root/scripts/sign-android-device.sh" \
+    "$root/scripts/verify-raspberry-pi.sh" \
     "$root/scripts/verify-release.sh" "$root/scripts/version-manager.sh"
 run_step android_matrix_syntax bash -n "$root/scripts/android-full-matrix.sh"
 run_step android_log_syntax bash -n "$root/scripts/android-collect-logs.sh"
+
+if [ "${SMART_BOX_RUN_ANDROID_DEVICE:-0}" = 1 ]; then
+    run_env_gate android_device "$root/scripts/android-full-matrix.sh"
+elif authorized_android_device; then
+    blocked_step android_device "authorized device present; default path does not run scripts/android-full-matrix.sh"
+else
+    blocked_step android_device "no authorized Android device"
+fi
 
 if command -v systemd-analyze >/dev/null 2>&1; then
     run_step systemd_units systemd-analyze verify \
@@ -174,14 +230,18 @@ elif command -v powershell.exe >/dev/null 2>&1; then
 else
     powershell_bin=
 fi
-if [ -n "$powershell_bin" ]; then
-    if command -v dotnet >/dev/null 2>&1; then
-        run_step windows_verify "$powershell_bin" -NoLogo -NoProfile -File "$root/scripts/verify-windows.ps1" -OutputDirectory "$out/windows"
+if windows_runner_available; then
+    if [ -n "$powershell_bin" ]; then
+        if command -v dotnet >/dev/null 2>&1; then
+            run_env_gate windows_verify "$powershell_bin" -NoLogo -NoProfile -File "$root/scripts/verify-windows.ps1" -OutputDirectory "$out/windows"
+        else
+            blocked_step windows_verify ".NET SDK is unavailable"
+        fi
     else
-        blocked_step windows_verify ".NET SDK is unavailable"
+        blocked_step windows_verify "PowerShell is unavailable on this host"
     fi
 else
-    blocked_step windows_verify "PowerShell is unavailable on this host"
+    blocked_step windows_verify "Windows runner is not available"
 fi
 
 if [ -n "${RASPBERRY_PI_HOST:-}" ] && [ -x "$root/scripts/verify-raspberry-pi.sh" ]; then

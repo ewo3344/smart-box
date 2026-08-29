@@ -110,13 +110,17 @@ for unit in smart-box-converter.service smart-box.service smart-box-converter-ro
   printf "unit_%s=" "${unit%.service}"
   systemctl is-active "$unit" 2>/dev/null || true
 done
-printf "converter_pid="; pgrep -xo smart-box-converter 2>/dev/null || true
-printf "core_pid="; pgrep -xo smart-box-core 2>/dev/null || true
-printf "disk_root="; df -P / 2>/dev/null | awk "NR==2 {print \\$5}"
-printf "memory="; free -m 2>/dev/null | awk "NR==2 {print \\$3 \"/\" \\$2 \"MiB\"}"
+printf "converter_pid=%s\\n" "$(pgrep -xo smart-box-converter 2>/dev/null || true)"
+printf "core_pid=%s\\n" "$(pgrep -xo smart-box-core 2>/dev/null || true)"
+printf "disk_root=%s\\n" "$(df -P / 2>/dev/null | awk "NR==2 {print \$5}")"
+printf "memory=%s\\n" "$(free -m 2>/dev/null | awk "NR==2 {print \$3 \"/\" \$2 \"MiB\"}")"
+printf "ip_rule_8998=%s\\n" "$({ ip rule show; ip -6 rule show; } 2>/dev/null | grep -c 8998 || true)"
+printf "ip_rule_8999=%s\\n" "$({ ip rule show; ip -6 rule show; } 2>/dev/null | grep -c 8999 || true)"
+printf "ip_rule_lines\\n"
+{ ip rule show; ip -6 rule show; } 2>/dev/null | grep -E "8998|8999" || true
 for path in /var/lib/smart-box/profile.json /var/lib/smart-box/cache.db; do
   if [ -f "$path" ]; then
-    printf "file_%s=present,size=%s,sha256=%s\\n" "$(basename "$path")" "$(stat -c %s "$path" 2>/dev/null || printf 0)" "$(sha256sum "$path" 2>/dev/null | awk "{print \\$1}")"
+    printf "file_%s=present,size=%s,sha256=%s\\n" "$(basename "$path")" "$(stat -c %s "$path" 2>/dev/null || printf 0)" "$(sha256sum "$path" 2>/dev/null | awk "{print \$1}")"
   else
     printf "file_%s=missing\\n" "$(basename "$path")"
   fi
@@ -141,6 +145,12 @@ for expected in \
         failed=$((failed + 1))
     fi
 done
+if ! grep -Eq '^ip_rule_8998=[1-9][0-9]*$' "$raw"; then
+    failed=$((failed + 1))
+fi
+if ! grep -Eq '^ip_rule_8999=[1-9][0-9]*$' "$raw"; then
+    failed=$((failed + 1))
+fi
 
 {
     printf '%s\n\n' '# Raspberry Pi health verification'

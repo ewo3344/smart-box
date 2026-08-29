@@ -385,12 +385,13 @@ git tag
 echo
 echo "下一步操作:"
 echo "  1. 添加远程仓库: git remote add origin <URL>"
-echo "  2. 推送到远程: git push -u origin main --tags"
-echo "  3. 推送 develop 分支: git push -u origin develop"
+echo "  2. 推送已审查的主分支: git push -u origin main"
+echo "  3. 推送 develop 分支（确认其基于 main 后）: git push -u origin develop"
+echo "  4. 标签仅在确认不含敏感历史后逐个推送: git push origin <tag>"
 echo
 log_info "建议的远程仓库设置:"
-echo "  - GitHub: git remote add origin git@github.com:your-org/smart-box.git"
-echo "  - GitLab: git remote add origin git@gitlab.com:your-org/smart-box.git"
+echo "  - GitHub: git remote add origin git@github.com:ewo3344/smart-box.git"
+echo "  - Git remote: configure the repository URL for your hosting account"
 echo "  - 自托管: git remote add origin git@your-server:smart-box.git"
 echo
 log_warn "提醒: 确保 .gitignore 正确排除了敏感文件（config.json, *.keystore 等）"

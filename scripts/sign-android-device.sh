@@ -2,14 +2,14 @@
 set -eu
 
 usage() {
-    printf 'usage: ANDROID_KEYSTORE_PASS=... ANDROID_KEY_ALIAS_PASS=... %s INPUT.apk OUTPUT.apk [KEYSTORE]\n' "$0" >&2
+    printf 'usage: ANDROID_KEYSTORE_PASS=... ANDROID_KEY_ALIAS_PASS=... %s INPUT.apk OUTPUT.apk KEYSTORE\n' "$0" >&2
     exit 64
 }
 
-[ "$#" -ge 2 ] || usage
+[ "$#" -eq 3 ] || usage
 input=$1
 output=$2
-keystore=${3:-${ANDROID_DEVICE_KEYSTORE:-$HOME/.android/smart-box-device.keystore}}
+keystore=$3
 alias=${ANDROID_DEVICE_KEY_ALIAS:-androiddebugkey}
 apksigner=${APKSIGNER:-}
 

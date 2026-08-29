@@ -5,9 +5,11 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 require_fail_open=1
 run_android=0
 config_dir_arg=
+allow_private_config=${SMART_BOX_ALLOW_PRIVATE_CONFIG:-0}
+go_command=${GO:-go}
 
 usage() {
-    printf '%s\n' "usage: $0 [--allow-live] [--android] [--config-dir DIR]"
+    printf '%s\n' "usage: $0 [--allow-live] [--android] [--config-dir DIR] [--allow-private-config]"
 }
 
 while [ "$#" -gt 0 ]; do
@@ -20,6 +22,7 @@ while [ "$#" -gt 0 ]; do
             config_dir_arg=$2
             shift
             ;;
+        --allow-private-config) allow_private_config=1 ;;
         -h|--help) usage; exit 0 ;;
         *) usage >&2; exit 64 ;;
     esac
@@ -31,7 +34,16 @@ run() {
     "$@"
 }
 
+check_shell_syntax() {
+    for script do
+        sh -n "$script"
+    done
+}
+
 cd "$root"
+
+run scripts/version-manager.sh check
+run git diff --check
 
 toolchain_file="$root/TOOLCHAIN_VERSION"
 if [ ! -f "$toolchain_file" ]; then
@@ -89,7 +101,8 @@ if [ ! -f "$profile_source" ] || [ ! -f "$runtime_source" ]; then
     # A caller-provided directory takes precedence.  On a developer machine,
     # fall back to the private profile only when no checked-in fixture exists.
     private_config_dir="$source_home/.config/smart-box"
-    if [ -z "$config_dir_arg" ] && [ -z "${SMART_BOX_CONFIG_DIR:-}" ] &&
+    if [ "$allow_private_config" = 1 ] &&
+       [ -z "$config_dir_arg" ] && [ -z "${SMART_BOX_CONFIG_DIR:-}" ] &&
        [ -f "$private_config_dir/profile.json" ] &&
        [ -f "$private_config_dir/runtime.json" ]; then
         source_config_dir="$private_config_dir"
@@ -114,7 +127,11 @@ run env \
     python3 -m unittest discover -s linux/tests -p 'test*.py' -q
 install -m 0600 "$profile_source" "$test_home_dir/.config/smart-box/profile.json"
 install -m 0600 "$runtime_source" "$test_home_dir/.config/smart-box/runtime.json"
-run sh -n linux/build-package.sh linux/install.sh linux/uninstall.sh linux/smart-box linux/smart-box-profile
+run check_shell_syntax \
+    linux/build-package.sh linux/install.sh linux/uninstall.sh linux/smart-box \
+    linux/smart-box-profile scripts/build-linux.sh scripts/init-git.sh \
+    scripts/sign-android-device.sh scripts/verify-raspberry-pi.sh \
+    scripts/verify-release.sh scripts/version-manager.sh
 run systemd-analyze verify linux/smart-box@.service linux/smart-box-watchdog@.service linux/smart-box-cleanup@.service linux/smart-box-unmask@.service
 
 if [ -x "$package_dir/bin/smart-box-core" ]; then
@@ -123,15 +140,33 @@ elif [ "${SMART_BOX_ALLOW_INSTALLED_CORE:-0}" = 1 ] &&
       [ -x /usr/local/lib/smart-box/smart-box-core ]; then
     core=/usr/local/lib/smart-box/smart-box-core
 else
-    printf '%s\n' "release gate: no Core for $package_name (build the matching dist package first)" >&2
-    exit 1
+    # A clean checkout has no dist artifact. Build the pinned Core and Linux
+    # package in one step so the release gate is self-contained.
+    command -v "$go_command" >/dev/null 2>&1 || {
+        printf '%s\n' "release gate: no Core for $package_name and Go is unavailable; run scripts/build-linux.sh first" >&2
+        exit 1
+    }
+    [ -f "$root/core/go.mod" ] || {
+        printf '%s\n' 'release gate: core submodule is not initialized; run git submodule update --init --recursive' >&2
+        exit 1
+    }
+    run env GO="$go_command" GOTOOLCHAIN="$toolchain_version" "$root/scripts/build-linux.sh"
+    [ -x "$package_dir/bin/smart-box-core" ] || {
+        printf '%s\n' "release gate: Core build did not produce $package_dir/bin/smart-box-core" >&2
+        exit 1
+    }
+    core="$package_dir/bin/smart-box-core"
 fi
 
 run "$core" check --disable-color -D "$HOME/.local/state/smart-box" -c "$HOME/.config/smart-box/profile.json"
 run "$core" check --disable-color -D "$HOME/.local/state/smart-box" -c "$HOME/.config/smart-box/runtime.json"
 
-if [ -x "$root/converter/smart-box-converter-linux-arm64" ] || command -v go >/dev/null 2>&1; then
-    (cd "$root/converter" && run env SMART_BOX_CORE="$core" GOTOOLCHAIN="$toolchain_version" go test ./...)
+if [ -f "$root/converter/go.mod" ]; then
+    command -v "$go_command" >/dev/null 2>&1 || {
+        printf '%s\n' 'release gate: Go is required to test converter/go.mod' >&2
+        exit 1
+    }
+    (cd "$root/converter" && run env SMART_BOX_CORE="$core" GOTOOLCHAIN="$toolchain_version" "$go_command" test ./...)
 fi
 
 run "$root/linux/build-package.sh"

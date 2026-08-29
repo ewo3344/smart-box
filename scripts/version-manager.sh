@@ -1,324 +1,270 @@
-#!/bin/bash
-# smart-box 版本管理工具
-# 用于统一更新所有组件的版本号
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+script_dir=$(CDPATH= cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+project_root=$(CDPATH= cd -- "$script_dir/.." && pwd)
+version_file="$project_root/VERSION"
+toolchain_file="$project_root/TOOLCHAIN_VERSION"
+linux_file="$project_root/linux/smart_box_backend.py"
+android_file="$project_root/android/version.properties"
+windows_file="$project_root/windows/SingBoxSmart.Windows.csproj"
+rollback_dir=
+rollback_active=0
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-# 颜色输出
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+rollback_version_metadata() {
+    status=$?
+    trap - EXIT HUP INT TERM
+    if [ "${rollback_active:-0}" -eq 1 ] && [ -n "${rollback_dir:-}" ]; then
+        cp -p -- "$rollback_dir/$(basename "$version_file")" "$version_file"
+        cp -p -- "$rollback_dir/$(basename "$linux_file")" "$linux_file"
+        cp -p -- "$rollback_dir/$(basename "$android_file")" "$android_file"
+        cp -p -- "$rollback_dir/$(basename "$windows_file")" "$windows_file"
+    fi
+    if [ -n "${rollback_dir:-}" ]; then
+        rm -rf -- "$rollback_dir"
+    fi
+    exit "$status"
+}
 
 usage() {
-    cat << EOF
-用法: $0 <命令> [参数]
+    cat <<'EOF'
+usage: scripts/version-manager.sh <command> [arguments]
 
-命令:
-    bump <版本号>        更新所有组件到指定版本号
-    current              显示当前版本号
-    check                检查版本号一致性
-    validate <版本号>    验证版本号格式
+commands:
+  current                    print the smart-box product version
+  check                      verify Linux, Android, and Windows metadata
+  validate <version>         validate a SemVer 2.0.0 product version
+  bump <version> [--yes]     update product metadata and increment Android code
 
-示例:
-    $0 bump 0.2.0
-    $0 current
-    $0 check
-    $0 validate 1.0.0-rc.1
-
-版本号格式: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]
+The upstream core version stays independent. Update it deliberately in
+android/version.properties when the core submodule is rebased.
 EOF
+}
+
+die() {
+    printf 'version-manager: %s\n' "$*" >&2
     exit 1
 }
 
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $1"
+require_file() {
+    [ -f "$1" ] || die "missing required file: $1"
 }
 
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1"
+read_trimmed() {
+    tr -d '\r\n' < "$1"
 }
 
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
-    exit 1
+preserve_file_metadata() {
+    local source=$1 temporary=$2
+    # Atomic replacements must not silently change permissions on metadata.
+    chmod --reference="$source" "$temporary"
+    chown --reference="$source" "$temporary" 2>/dev/null || true
 }
 
-# 验证版本号格式（Semver 2.0.0）
 validate_version() {
-    local version=$1
-    local semver_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
-
-    if [[ ! $version =~ $semver_regex ]]; then
-        log_error "无效的版本号格式: $version\n应符合 Semver 2.0.0: MAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]"
-    fi
-
-    log_info "版本号格式有效: $version"
-}
-
-# 从 VERSION 文件读取当前版本
-get_current_version() {
-    if [[ -f "$PROJECT_ROOT/VERSION" ]]; then
-        cat "$PROJECT_ROOT/VERSION"
-    else
-        echo "unknown"
+    local version=${1:-} prerelease identifier
+    local -a prerelease_identifiers=()
+    [[ "$version" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]] || \
+        die "invalid SemVer 2.0.0 version: $version"
+    local core_version=${version%%+*}
+    if [[ "$core_version" == *-* ]]; then
+        prerelease=${core_version#*-}
+        IFS=. read -r -a prerelease_identifiers <<< "$prerelease"
+        for identifier in "${prerelease_identifiers[@]}"; do
+            [[ ! "$identifier" =~ ^[0-9]+$ ]] || [[ "$identifier" = "0" ]] || [[ "$identifier" != 0* ]] || \
+                die "numeric prerelease identifiers cannot contain leading zeroes: $version"
+        done
     fi
 }
 
-# 更新 VERSION 文件
-update_version_file() {
-    local version=$1
-    echo "$version" > "$PROJECT_ROOT/VERSION"
-    log_info "已更新 VERSION 文件: $version"
+property_value() {
+    local key=$1
+    awk -F= -v key="$key" '$1 == key { value = substr($0, length(key) + 2) } END { if (value == "") exit 1; print value }' "$android_file" || \
+        die "missing Android property: $key"
 }
 
-# 核心版本来源（经 2026-08-28 核对真实路径）
-#   core:      构建期通过 -ldflags 注入 constant.Version，仓库内无静态版本号
-#   linux:     linux/smart_box_backend.py 的 APP_VERSION
-#   android:   android/version.properties 的 SMART_VERSION / VERSION_NAME / VERSION_CODE
-#   converter: 无独立版本常量，跟随产品版本
-#   windows:   windows/SingBoxSmart.Windows.csproj
-
-# Core 版本 (Go, 构建期注入，无需改文件)
-update_core_version() {
-    local version=$1
-    log_info "Core 版本由构建期 -ldflags 注入 constant.Version，无静态文件需更新"
+xml_value() {
+    local tag=$1
+    sed -n "s#.*<$tag>\\([^<]*\\)</$tag>.*#\\1#p" "$windows_file" | head -n 1
 }
 
-# 更新 Linux 版本 (Python)
-update_linux_version() {
-    local version=$1
-    local backend_file="$PROJECT_ROOT/linux/smart_box_backend.py"
-
-    if [[ ! -f "$backend_file" ]]; then
-        log_warn "Linux backend 不存在，跳过: $backend_file"
-        return
-    fi
-
-    sed -i "s/^APP_VERSION = \"[^\"]*\"/APP_VERSION = \"$version\"/" "$backend_file"
-    log_info "已更新 Linux 版本: $backend_file (APP_VERSION)"
+replace_linux_version() {
+    local version=$1 temporary
+    temporary=$(mktemp "${linux_file}.XXXXXX")
+    awk -v version="$version" '
+        /^APP_VERSION = "/ {
+            print "APP_VERSION = \"" version "\""
+            found = 1
+            next
+        }
+        { print }
+        END { if (!found) exit 42 }
+    ' "$linux_file" > "$temporary" || {
+        rm -f -- "$temporary"
+        die "could not update APP_VERSION"
+    }
+    preserve_file_metadata "$linux_file" "$temporary"
+    mv -- "$temporary" "$linux_file"
 }
 
-# 更新 Android 版本 (version.properties)
-update_android_version() {
-    local version=$1
-    local props_file="$PROJECT_ROOT/android/version.properties"
-
-    if [[ ! -f "$props_file" ]]; then
-        log_warn "Android version.properties 不存在，跳过: $props_file"
-        return
-    fi
-
-    local upstream
-    upstream=$(grep '^UPSTREAM_VERSION=' "$props_file" | cut -d= -f2)
-
-    sed -i "s/^SMART_VERSION=.*/SMART_VERSION=$version/" "$props_file"
-    if [[ -n "$upstream" ]]; then
-        sed -i "s/^VERSION_NAME=.*/VERSION_NAME=$version-core.$upstream/" "$props_file"
-    fi
-
-    # 递增 versionCode（Android 要求单调递增，不可重置）
-    local current_code
-    current_code=$(grep '^VERSION_CODE=' "$props_file" | cut -d= -f2)
-    if [[ -n "$current_code" ]]; then
-        local new_code=$((current_code + 1))
-        sed -i "s/^VERSION_CODE=.*/VERSION_CODE=$new_code/" "$props_file"
-        log_info "已更新 Android 版本: SMART_VERSION=$version, VERSION_CODE=$new_code"
-    else
-        log_info "已更新 Android 版本: SMART_VERSION=$version"
-    fi
+replace_android_property() {
+    local key=$1 value=$2 temporary
+    temporary=$(mktemp "${android_file}.XXXXXX")
+    awk -v key="$key" -v value="$value" '
+        $0 ~ "^" key "=" {
+            print key "=" value
+            found = 1
+            next
+        }
+        { print }
+        END { if (!found) exit 42 }
+    ' "$android_file" > "$temporary" || {
+        rm -f -- "$temporary"
+        die "could not update Android property: $key"
+    }
+    preserve_file_metadata "$android_file" "$temporary"
+    mv -- "$temporary" "$android_file"
 }
 
-# 更新 Windows 版本 (csproj)
-update_windows_version() {
-    local version=$1
-    local csproj_file="$PROJECT_ROOT/windows/SingBoxSmart.Windows.csproj"
-
-    if [[ ! -f "$csproj_file" ]]; then
-        log_warn "Windows csproj 不存在，跳过: $csproj_file"
-        return
-    fi
-
-    # 提取纯数字版本（AssemblyVersion 不接受 prerelease 后缀）
-    local numeric_version
-    numeric_version=$(echo "$version" | grep -oE '^[0-9]+\.[0-9]+\.[0-9]+')
-
-    if grep -q "<Version>" "$csproj_file"; then
-        sed -i "s|<Version>[^<]*</Version>|<Version>$version</Version>|" "$csproj_file"
-        sed -i "s|<AssemblyVersion>[^<]*</AssemblyVersion>|<AssemblyVersion>$numeric_version</AssemblyVersion>|" "$csproj_file"
-        sed -i "s|<FileVersion>[^<]*</FileVersion>|<FileVersion>$numeric_version</FileVersion>|" "$csproj_file"
-        log_info "已更新 Windows 版本: $csproj_file"
-    else
-        log_warn "Windows csproj 中没有 <Version> 元素，跳过（需手动确认版本注入方式）"
-    fi
+replace_windows_metadata() {
+    local version=$1 upstream=$2 temporary
+    temporary=$(mktemp "${windows_file}.XXXXXX")
+    awk -v version="$version" -v upstream="$upstream" '
+        /<Version>[^<]*<\/Version>/ {
+            sub(/<Version>[^<]*<\/Version>/, "<Version>" version "</Version>")
+            version_found = 1
+        }
+        /<InformationalVersion>[^<]*<\/InformationalVersion>/ {
+            sub(/<InformationalVersion>[^<]*<\/InformationalVersion>/, "<InformationalVersion>smart-box " version " (core " upstream ")</InformationalVersion>")
+            info_found = 1
+        }
+        { print }
+        END { if (!version_found || !info_found) exit 42 }
+    ' "$windows_file" > "$temporary" || {
+        rm -f -- "$temporary"
+        die "could not update Windows metadata"
+    }
+    preserve_file_metadata "$windows_file" "$temporary"
+    mv -- "$temporary" "$windows_file"
 }
 
-# Converter 版本（无独立常量，跟随产品版本）
-update_converter_version() {
-    local version=$1
-    log_info "Converter 无独立版本常量，跟随 VERSION 文件（$version）"
-}
+check_versions() {
+    local version toolchain upstream expected_android linux_version android_smart android_name android_go_version windows_version windows_info android_code failed=0
+    require_file "$version_file"
+    require_file "$toolchain_file"
+    require_file "$linux_file"
+    require_file "$android_file"
+    require_file "$windows_file"
 
-# 检查版本一致性
-check_version_consistency() {
-    log_info "检查版本号一致性..."
+    version=$(read_trimmed "$version_file")
+    validate_version "$version"
+    toolchain=$(read_trimmed "$toolchain_file")
+    [[ "$toolchain" =~ ^go[0-9]+\.[0-9]+\.[0-9]+$ ]] || die "invalid Go toolchain pin: $toolchain"
+    upstream=$(property_value UPSTREAM_VERSION)
+    expected_android="${version}-core.${upstream}"
+    linux_version=$(sed -n 's/^APP_VERSION = "\([^"]*\)"$/\1/p' "$linux_file" | head -n 1)
+    android_smart=$(property_value SMART_VERSION)
+    android_name=$(property_value VERSION_NAME)
+    android_go_version=$(property_value GO_VERSION)
+    android_code=$(property_value VERSION_CODE)
+    windows_version=$(xml_value Version)
+    windows_info=$(xml_value InformationalVersion)
 
-    local expected
-    expected=$(get_current_version)
-    log_info "VERSION 文件: $expected"
+    printf 'VERSION=%s\n' "$version"
+    printf 'UPSTREAM_VERSION=%s\n' "$upstream"
 
-    if [[ "$expected" == "unknown" ]]; then
-        log_error "VERSION 文件缺失，无法比对"
-        return 1
-    fi
-
-    local inconsistent=0
-    local checked=0
-
-    # 检查 Linux (linux/smart_box_backend.py APP_VERSION)
-    local backend_file="$PROJECT_ROOT/linux/smart_box_backend.py"
-    if [[ -f "$backend_file" ]]; then
-        checked=$((checked + 1))
-        local linux_version
-        linux_version=$(grep '^APP_VERSION = ' "$backend_file" | sed 's/.*"\(.*\)".*/\1/')
-        if [[ "$linux_version" != "$expected" ]]; then
-            log_warn "Linux 版本不一致: '$linux_version' (预期: $expected)"
-            inconsistent=1
+    for item in \
+        "Linux APP_VERSION|$linux_version|$version" \
+        "Android SMART_VERSION|$android_smart|$version" \
+        "Android VERSION_NAME|$android_name|$expected_android" \
+        "Android GO_VERSION|$android_go_version|$toolchain" \
+        "Windows Version|$windows_version|$version" \
+        "Windows InformationalVersion|$windows_info|smart-box $version (core $upstream)"; do
+        IFS='|' read -r label actual expected <<EOF
+$item
+EOF
+        if [ "$actual" = "$expected" ]; then
+            printf 'OK %s=%s\n' "$label" "$actual"
         else
-            log_info "✓ Linux 版本一致: $linux_version"
+            printf 'MISMATCH %s=%s (expected %s)\n' "$label" "$actual" "$expected" >&2
+            failed=1
         fi
+    done
+
+    if [[ ! "$android_code" =~ ^[1-9][0-9]*$ ]]; then
+        printf 'MISMATCH Android VERSION_CODE=%s (expected a positive integer)\n' "$android_code" >&2
+        failed=1
     else
-        log_warn "未找到 Linux 版本文件: $backend_file"
-        inconsistent=1
+        printf 'OK Android VERSION_CODE=%s\n' "$android_code"
     fi
 
-    # 检查 Android (android/version.properties SMART_VERSION)
-    local props_file="$PROJECT_ROOT/android/version.properties"
-    if [[ -f "$props_file" ]]; then
-        checked=$((checked + 1))
-        local android_version
-        android_version=$(grep '^SMART_VERSION=' "$props_file" | cut -d= -f2)
-        if [[ "$android_version" != "$expected" ]]; then
-            log_warn "Android 版本不一致: '$android_version' (预期: $expected)"
-            inconsistent=1
-        else
-            log_info "✓ Android 版本一致: $android_version"
-        fi
-
-        # 交叉检查 VERSION_NAME 是否包含 SMART_VERSION
-        local version_name upstream
-        version_name=$(grep '^VERSION_NAME=' "$props_file" | cut -d= -f2)
-        upstream=$(grep '^UPSTREAM_VERSION=' "$props_file" | cut -d= -f2)
-        local want_name="$expected-core.$upstream"
-        if [[ "$version_name" != "$want_name" ]]; then
-            log_warn "Android VERSION_NAME 不匹配: '$version_name' (预期: $want_name)"
-            inconsistent=1
-        else
-            log_info "✓ Android VERSION_NAME 一致: $version_name"
-        fi
-    else
-        log_warn "未找到 Android 版本文件: $props_file"
-        inconsistent=1
-    fi
-
-    # Check the Windows project when it is present.  This keeps the product
-    # version gate honest even though Windows builds run on another host.
-    local windows_file="$PROJECT_ROOT/windows/SingBoxSmart.Windows.csproj"
-    if [[ -f "$windows_file" ]]; then
-        checked=$((checked + 1))
-        local windows_version
-        windows_version=$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' "$windows_file" | head -n 1)
-        if [[ "$windows_version" != "$expected" ]]; then
-            log_warn "Windows 版本不一致: '$windows_version' (预期: $expected)"
-            inconsistent=1
-        else
-            log_info "✓ Windows 版本一致: $windows_version"
-        fi
-    else
-        log_warn "未找到 Windows 版本文件: $windows_file"
-        inconsistent=1
-    fi
-
-    # Core 为构建期注入，只做提示
-    log_info "· Core 版本构建期注入（constant.Version），不做静态比对"
-    log_info "· Converter 无独立版本常量，跟随 VERSION"
-
-    if [[ $checked -eq 0 ]]; then
-        log_error "没有找到任何可比对的版本文件，检查未生效（不是通过）"
-        return 1
-    fi
-
-    if [[ $inconsistent -eq 0 ]]; then
-        log_info "已比对 $checked 个组件，版本号一致 ✓"
-        return 0
-    else
-        log_error "发现版本号不一致，请运行 'bump' 命令统一更新"
-        return 1
-    fi
+    [ "$failed" -eq 0 ] || return 1
 }
 
-# 更新所有组件版本
 bump_version() {
-    local new_version=$1
+    local version=${1:-} confirmation=${2:-} current upstream code next_code
+    [ -n "$version" ] || die "missing version"
+    [ -z "$confirmation" ] || [ "$confirmation" = "--yes" ] || die "unknown bump option: $confirmation"
+    validate_version "$version"
+    check_versions >/dev/null
+    current=$(read_trimmed "$version_file")
+    [ "$current" != "$version" ] || die "VERSION already is $version"
 
-    validate_version "$new_version"
-
-    local current_version=$(get_current_version)
-    log_info "当前版本: $current_version"
-    log_info "目标版本: $new_version"
-
-    read -p "确认更新所有组件版本到 $new_version? (y/N) " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        log_warn "已取消版本更新"
-        exit 0
+    if [ "$confirmation" != "--yes" ]; then
+        printf 'Update smart-box product version from %s to %s? [y/N] ' "$current" "$version"
+        read -r answer
+        case "$answer" in
+            y|Y|yes|YES) ;;
+            *) printf 'version-manager: cancelled\n'; return 0 ;;
+        esac
     fi
 
-    log_info "开始更新版本号..."
+    upstream=$(property_value UPSTREAM_VERSION)
+    code=$(property_value VERSION_CODE)
+    next_code=$((10#$code + 1))
+    rollback_dir=$(mktemp -d "${TMPDIR:-/tmp}/smart-box-version.XXXXXX")
+    rollback_active=1
+    cp -p -- "$version_file" "$linux_file" "$android_file" "$windows_file" "$rollback_dir/"
+    trap rollback_version_metadata EXIT HUP INT TERM
 
-    update_version_file "$new_version"
-    update_core_version "$new_version"
-    update_linux_version "$new_version"
-    update_android_version "$new_version"
-    update_windows_version "$new_version"
-    update_converter_version "$new_version"
-
-    log_info "版本更新完成！"
-    echo
-    log_info "下一步操作:"
-    echo "  1. 检查变更: git diff"
-    echo "  2. 更新 CHANGELOG.md"
-    echo "  3. 提交变更: git commit -am 'chore: bump version to $new_version'"
-    echo "  4. 创建发布分支或标签（如适用）"
+    printf '%s\n' "$version" > "$version_file"
+    replace_linux_version "$version"
+    replace_android_property SMART_VERSION "$version"
+    replace_android_property VERSION_NAME "${version}-core.${upstream}"
+    replace_android_property VERSION_CODE "$next_code"
+    replace_windows_metadata "$version" "$upstream"
+    check_versions
+    rollback_active=0
+    trap - EXIT HUP INT TERM
+    rm -rf -- "$rollback_dir"
+    rollback_dir=
+    printf 'Updated smart-box product version to %s; Android VERSION_CODE=%s\n' "$version" "$next_code"
 }
 
-# 主命令处理
 case "${1:-}" in
-    bump)
-        if [[ -z "${2:-}" ]]; then
-            log_error "缺少版本号参数"
-            usage
-        fi
-        bump_version "$2"
-        ;;
     current)
-        version=$(get_current_version)
-        echo "$version"
+        [ "$#" -eq 1 ] || { usage >&2; exit 64; }
+        require_file "$version_file"
+        printf '%s\n' "$(read_trimmed "$version_file")"
         ;;
     check)
-        check_version_consistency
+        [ "$#" -eq 1 ] || { usage >&2; exit 64; }
+        check_versions
         ;;
     validate)
-        if [[ -z "${2:-}" ]]; then
-            log_error "缺少版本号参数"
-            usage
-        fi
+        [ "$#" -eq 2 ] || { usage >&2; exit 64; }
         validate_version "$2"
+        printf 'valid SemVer: %s\n' "$2"
+        ;;
+    bump)
+        [ "$#" -eq 2 ] || [ "$#" -eq 3 ] || { usage >&2; exit 64; }
+        bump_version "$2" "${3:-}"
+        ;;
+    -h|--help|help)
+        usage
         ;;
     *)
-        usage
+        usage >&2
+        exit 64
         ;;
 esac
