@@ -80,3 +80,5 @@ __pycache__/
 .vscode/
 .DS_Store
 Thumbs.db
+GROK-EXECUTION-REVIEW.md
+NEXT-GOALS.md
