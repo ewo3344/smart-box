@@ -203,7 +203,7 @@ func TestLoadConfigValidatesPublicOrigin(t *testing.T) {
 		publicURL string
 		wantError bool
 	}{
-		{name: "http LAN origin", publicURL: "http://192.168.2.102:38473/"},
+		{name: "http TEST-NET origin", publicURL: "http://192.0.2.102:38473/"},
 		{name: "https origin", publicURL: "https://box.example.com"},
 		{name: "path", publicURL: "https://box.example.com/converter", wantError: true},
 		{name: "query", publicURL: "https://box.example.com?x=1", wantError: true},

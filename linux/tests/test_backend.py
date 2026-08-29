@@ -124,6 +124,33 @@ def sample_profile() -> dict:
     }
 
 
+def core_checkable_profile() -> dict:
+    """Return a core-valid profile without Linux multicast already applied."""
+    profile = sample_profile()
+    for item in profile["outbounds"]:
+        if item.get("tag") == "jp-node":
+            item.clear()
+            item.update(
+                {
+                    "type": "socks",
+                    "tag": "jp-node",
+                    "server": "192.0.2.1",
+                    "server_port": 1080,
+                }
+            )
+        if item.get("type") == "smart":
+            item.setdefault("url", "https://www.gstatic.com/generate_204")
+            item.setdefault("interval", "5m")
+    for server in profile["dns"]["servers"]:
+        if server.get("type") == "https":
+            server.setdefault("server_port", 443)
+            server.setdefault("path", "/dns-query")
+    profile["dns"]["rules"] = [
+        rule for rule in profile["dns"]["rules"] if "rule_set" not in rule
+    ]
+    return profile
+
+
 class DomainParsingTest(unittest.TestCase):
     def test_normalizes_idn_wildcards_and_removes_covered_children(self) -> None:
         domains, invalid = backend.parse_domain_text(
@@ -613,6 +640,74 @@ class RuntimeProfileTest(unittest.TestCase):
         self.assertEqual(second_rules.count(expected), 1)
         self.assertEqual(first_rules[-1], expected)
         self.assertEqual(second_rules[-1], expected)
+
+    def test_prepare_runtime_core_check_keeps_private_lan_multicast_direct(
+        self,
+    ) -> None:
+        core = backend.find_core()
+        if not core.is_file() or not os.access(core, os.X_OK):
+            self.skipTest("smart-box-core is required for route-priority core check")
+
+        source = core_checkable_profile()
+        self.assertFalse(
+            any(
+                isinstance(rule, dict)
+                and rule.get("ip_cidr") == list(backend.LINUX_LOCAL_MULTICAST_CIDRS)
+                for rule in source["route"]["rules"]
+            )
+        )
+
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir)
+            config_dir = root / "config"
+            state_dir = root / "state"
+            config_dir.mkdir()
+            state_dir.mkdir()
+            profile_path = root / "profile.json"
+            runtime_path = root / "runtime.json"
+            profile_path.write_text(json.dumps(source), encoding="utf-8")
+            with mock.patch.object(backend, "CONFIG_DIR", config_dir), mock.patch.object(
+                backend, "STATE_DIR", state_dir
+            ), mock.patch.object(backend, "CACHE_PATH", state_dir / "cache.db"):
+                result_path = backend.prepare_runtime(
+                    profile_path=profile_path,
+                    runtime_path=runtime_path,
+                    settings=copy.deepcopy(backend.DEFAULT_SETTINGS),
+                )
+
+            self.assertEqual(result_path, runtime_path)
+            runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+
+        rules = runtime["route"]["rules"]
+        private = next(
+            rule for rule in rules if rule.get("ip_is_private") is True
+        )
+        multicast = {
+            "ip_cidr": list(backend.LINUX_LOCAL_MULTICAST_CIDRS),
+            "action": "route",
+            "outbound": backend.DIRECT_OUTBOUND,
+        }
+        self.assertEqual(private["action"], "route")
+        self.assertEqual(private["outbound"], backend.DIRECT_OUTBOUND)
+        self.assertEqual(rules.count(multicast), 1)
+        self.assertEqual(rules[-1], multicast)
+        self.assertEqual(runtime["route"]["final"], backend.BASELINE_OUTBOUND)
+
+        tun = next(item for item in runtime["inbounds"] if item["type"] == "tun")
+        exclusions = set(tun["route_exclude_address"])
+        self.assertTrue(
+            {
+                "10.0.0.0/8",
+                "172.16.0.0/12",
+                "192.168.0.0/16",
+                "169.254.0.0/16",
+                "224.0.0.0/4",
+                "255.255.255.255/32",
+                "fc00::/7",
+                "fe80::/10",
+                "ff00::/8",
+            }.issubset(exclusions)
+        )
 
     def test_reliability_rules_precede_subscription_ads_and_cn_rules(self) -> None:
         source = sample_profile()

@@ -1,6 +1,6 @@
 {
   "listen": "0.0.0.0:38473",
-  "public_url": "http://192.168.2.102:38473",
+  "public_url": "https://converter.example.invalid",
   "public_path": "replace-with-a-long-random-token",
   "refresh_interval": "24h",
   "cache_dir": "/var/lib/smart-box-converter/cache",
