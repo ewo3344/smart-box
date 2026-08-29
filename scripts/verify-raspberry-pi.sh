@@ -15,6 +15,12 @@ usage() {
     printf '%s\n' "usage: $0 [--host HOST] [--user USER] [--port PORT] [--identity FILE] [--out DIR] [--allow-unreachable]"
 }
 
+invalid_argument() {
+    usage >&2
+    printf '%s\n' "ERROR: $*" >&2
+    exit 64
+}
+
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --host) [ "$#" -ge 2 ] || { usage >&2; exit 64; }; host=$2; shift ;;
@@ -29,10 +35,41 @@ while [ "$#" -gt 0 ]; do
     shift
 done
 
+# Keep every SSH setting as an argument rather than interpolating a command
+# string.  Host/user/port are validated so an option-looking value cannot be
+# mistaken for another ssh option.  A raw IPv6 address is accepted and wrapped
+# in brackets when constructing the user@host target.
+host_for_validation=$host
+case "$host_for_validation" in
+    \[*\])
+        host_for_validation=${host_for_validation#\[}
+        host_for_validation=${host_for_validation%\]}
+        ;;
+esac
+if [ -z "$host" ]; then
+    :
+elif [ -z "$host_for_validation" ] ||
+     ! printf '%s\n' "$host_for_validation" | LC_ALL=C grep -Eq '^[A-Za-z0-9._:%-]+$' ||
+     [ "${host_for_validation#-}" != "$host_for_validation" ]; then
+    invalid_argument "invalid host"
+fi
+if ! printf '%s\n' "$user" | LC_ALL=C grep -Eq '^[A-Za-z0-9._-]+$' ||
+   [ "${user#-}" != "$user" ]; then
+    invalid_argument "invalid user"
+fi
+if ! printf '%s\n' "$port" | LC_ALL=C grep -Eq '^[0-9]{1,5}$' ||
+   [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+    invalid_argument "invalid port: $port (expected 1-65535)"
+fi
+if [ -n "$identity" ] && [ ! -f "$identity" ]; then
+    invalid_argument "identity file does not exist: $identity"
+fi
+
 umask 077
 mkdir -p "$out"
 report="$out/REPORT.md"
 raw="$out/remote.txt"
+known_hosts="$out/known_hosts"
 
 if [ -z "$host" ]; then
     printf '%s\n' 'BLOCKED: set RASPBERRY_PI_HOST or pass --host' > "$report"
@@ -47,11 +84,23 @@ command -v ssh >/dev/null 2>&1 || {
     exit 2
 }
 
-ssh_args="-o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 -o StrictHostKeyChecking=accept-new -p $port"
-if [ -n "$identity" ]; then
-    ssh_args="$ssh_args -i $identity"
-fi
-target="$user@$host"
+case "$host" in
+    \[*\]) target="$user@$host" ;;
+    *:*) target="$user@[$host]" ;;
+    *) target="$user@$host" ;;
+esac
+
+run_ssh() {
+    if [ -n "$identity" ]; then
+        ssh -o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 \
+            -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known_hosts" \
+            -p "$port" -i "$identity" -- "$target"
+    else
+        ssh -o BatchMode=yes -o ConnectTimeout=8 -o ConnectionAttempts=1 \
+            -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile="$known_hosts" \
+            -p "$port" -- "$target"
+    fi
+}
 
 # Keep the command read-only and return machine-readable key/value lines.
 remote='set -u
@@ -73,7 +122,7 @@ for path in /var/lib/smart-box/profile.json /var/lib/smart-box/cache.db; do
   fi
 done'
 
-if ! sh -c "ssh $ssh_args '$target'" <<EOF >"$raw" 2>&1
+if ! run_ssh <<EOF >"$raw" 2>&1
 $remote
 EOF
 then

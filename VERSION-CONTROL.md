@@ -65,7 +65,7 @@ smart-box 是多组件项目，各组件独立迭代但协同发布：
 ### 当前版本：v0.1.0 (2026-08-24) - 首个功能完整版
 
 **发布状态**: Beta  
-**Git Tag**: `v0.1.0` (待创建)  
+**Git Tag**: `v0.1.0`（已创建，2026-08-29）
 **核心功能**:
 - ✅ Smart 自适应出站组（延迟+失败+记忆+持久化）
 - ✅ Linux 客户端完整实现（197/197 测试）
@@ -78,7 +78,7 @@ smart-box 是多组件项目，各组件独立迭代但协同发布：
 - Android 完整测试矩阵未完成
 - Windows 自动化测试缺失
 - 树莓派无监控告警
-- Git 历史缺失
+- Git 历史已建立；后续提交按 `main`/`develop` 分支策略维护
 
 **升级路径**: 首个版本，无升级
 
@@ -142,10 +142,11 @@ sudo systemctl start smart-box-converter.service
 - 树莓派: 使用 `.bak-*` 备份文件
 
 **验证清单**:
-- [ ] Linux: `scripts/verify-release.sh --allow-live`
-- [ ] Android: `scripts/android-full-matrix.sh` (新增)
-- [ ] Windows: `scripts/verify-windows.ps1` (新增)
-- [ ] 树莓派: `scripts/verify-raspberry-pi.sh` (新增)
+- [x] Linux: `scripts/verify-release.sh --config-dir test-fixtures/release-gate`
+- [ ] Android: `scripts/android-full-matrix.sh`（脚本已完成；真机门禁当前 BLOCKED/MANUAL_REQUIRED）
+- [ ] Windows: `scripts/verify-windows.ps1`（需要 Windows runner）
+- [ ] 树莓派: `scripts/verify-raspberry-pi.sh`（需要 SSH 目标）
+- [x] Android 日志: `scripts/android-collect-logs.sh`（脱敏归档）
 
 ---
 
@@ -1034,42 +1035,21 @@ adb shell dumpsys package io.nekohasekai.sfa.smartbox | grep version
   ├─ VERSION                    # 当前版本号
   ├─ CHANGELOG.md               # 变更日志
   ├─ VERSION-CONTROL.md         # 本文档
-  ├─ core/version.go            # Core 版本定义
-  ├─ linux/setup.py             # Linux 版本定义
-  ├─ android/app/build.gradle   # Android 版本定义
-  ├─ windows/AssemblyInfo.cs    # Windows 版本定义
-  └─ converter/version.go       # Converter 版本定义
+  ├─ TOOLCHAIN_VERSION          # 精确 Go 发布工具链
+  ├─ core/go.mod                # Core 最低 Go 语言版本
+  ├─ linux/smart_box_backend.py # Linux APP_VERSION
+  ├─ android/version.properties # Android 版本与 versionCode
+  ├─ windows/SingBoxSmart.Windows.csproj
+  └─ converter/go.mod           # Converter 模块最低 Go 版本
 ```
 
 ### 版本更新脚本
 
 ```bash
-#!/bin/bash
-# scripts/bump-version.sh
-
-VERSION=$1
-if [ -z "$VERSION" ]; then
-  echo "Usage: $0 <version>"
-  echo "Example: $0 0.2.0"
-  exit 1
-fi
-
-echo "Bumping version to $VERSION"
-
-# 更新所有版本文件
-echo "$VERSION" > VERSION
-
-sed -i "s/Version = \".*\"/Version = \"$VERSION\"/" core/version.go
-sed -i "s/version='.*'/version='$VERSION'/" linux/setup.py
-sed -i "s/versionName \".*\"/versionName \"$VERSION\"/" android/app/build.gradle
-sed -i "s/AssemblyVersion(\".*\")/AssemblyVersion(\"$VERSION\")/" windows/AssemblyInfo.cs
-sed -i "s/Version = \".*\"/Version = \"$VERSION\"/" converter/version.go
-
-echo "Version updated to $VERSION"
-echo "Don't forget to:"
-echo "  1. Update CHANGELOG.md"
-echo "  2. Commit: git commit -m 'chore: bump version to $VERSION'"
-echo "  3. Create tag after merge: git tag -a v$VERSION"
+./scripts/version-manager.sh current
+./scripts/version-manager.sh check
+# bump 会逐项更新 VERSION、Linux、Android 和 Windows；命令需要交互确认。
+./scripts/version-manager.sh bump 0.2.0
 ```
 
 ### 发布命令速查
@@ -1079,13 +1059,13 @@ echo "  3. Create tag after merge: git tag -a v$VERSION"
 git checkout -b release/v0.2.0 develop
 
 # 更新版本号
-./scripts/bump-version.sh 0.2.0
+printf 'y\n' | ./scripts/version-manager.sh bump 0.2.0
 
 # 构建所有平台
 ./scripts/build-all-platforms.sh
 
 # 验证发布
-./scripts/verify-release.sh --all-platforms
+./scripts/build-all-platforms.sh
 
 # 合并并打 tag
 git checkout main

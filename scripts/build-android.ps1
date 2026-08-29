@@ -2,8 +2,28 @@ $ErrorActionPreference = "Stop"
 $android = Join-Path $PSScriptRoot "..\android"
 $core = Join-Path $PSScriptRoot "..\core"
 $dist = Join-Path $PSScriptRoot "..\dist"
+$versionFile = Join-Path $PSScriptRoot "..\VERSION"
+$androidVersionFile = Join-Path $android "version.properties"
 $goBin = "C:\Program Files\Go\bin"
 $toolchainFile = Join-Path $PSScriptRoot "..\TOOLCHAIN_VERSION"
+
+if (-not (Test-Path $versionFile)) {
+    throw "Product version is missing: $versionFile"
+}
+$smartVersion = (Get-Content $versionFile -TotalCount 1).Trim()
+if ($smartVersion -notmatch '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$') {
+    throw "Invalid product version: $smartVersion"
+}
+if (-not (Test-Path $androidVersionFile)) {
+    throw "Android version properties are missing: $androidVersionFile"
+}
+$androidProperties = Get-Content $androidVersionFile
+$versionName = (($androidProperties | Where-Object { $_ -match '^VERSION_NAME=' }) -replace '^VERSION_NAME=', '').Trim()
+$upstreamVersion = (($androidProperties | Where-Object { $_ -match '^UPSTREAM_VERSION=' }) -replace '^UPSTREAM_VERSION=', '').Trim()
+if ([string]::IsNullOrWhiteSpace($versionName) -or [string]::IsNullOrWhiteSpace($upstreamVersion)) {
+    throw "VERSION_NAME/UPSTREAM_VERSION is missing: $androidVersionFile"
+}
+$releaseLabel = "$smartVersion-core-$upstreamVersion"
 
 if (-not (Test-Path $toolchainFile)) {
     throw "Go toolchain pin is missing: $toolchainFile"
@@ -47,8 +67,9 @@ try {
     .\gradlew.bat assemblePlayDebug
     New-Item -ItemType Directory -Force $dist | Out-Null
     $apkDir = Join-Path $android "app\build\outputs\apk\play\debug"
-    Copy-Item (Join-Path $apkDir "smart-box-0.1.0-core.1.14.0-beta.14-play-universal-debug.apk") (Join-Path $dist "smart-box-0.1.0-core-1.14.0-beta.14-android-universal.apk") -Force
-    Copy-Item (Join-Path $apkDir "smart-box-0.1.0-core.1.14.0-beta.14-play-arm64-v8a-debug.apk") (Join-Path $dist "smart-box-0.1.0-core-1.14.0-beta.14-android-arm64.apk") -Force
+    $apkPrefix = "smart-box-$versionName"
+    Copy-Item (Join-Path $apkDir "$apkPrefix-play-universal-debug.apk") (Join-Path $dist "smart-box-$releaseLabel-android-universal.apk") -Force
+    Copy-Item (Join-Path $apkDir "$apkPrefix-play-arm64-v8a-debug.apk") (Join-Path $dist "smart-box-$releaseLabel-android-arm64.apk") -Force
 } finally {
     Pop-Location
 }

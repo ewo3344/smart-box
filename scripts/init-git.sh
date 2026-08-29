@@ -34,16 +34,40 @@ log_error() {
 
 cd "$PROJECT_ROOT"
 
+# If this invocation creates an unborn repository and a later gate fails,
+# remove only the repository created by this invocation.  This prevents a
+# failed first run from masquerading as a resumable, half-initialized repo.
+CREATED_REPOSITORY=0
+ROLLBACK_UNBORN_REPOSITORY=0
+rollback_unborn_repository() {
+    rc=$?
+    if [[ $ROLLBACK_UNBORN_REPOSITORY -eq 1 && $CREATED_REPOSITORY -eq 1 ]] &&
+       ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+        rm -rf -- "$PROJECT_ROOT/.git"
+        log_warn "初始化门禁失败，已移除本次创建的未提交 .git 目录"
+    fi
+    exit "$rc"
+}
+trap rollback_unborn_repository EXIT HUP INT TERM
+
 # 允许在一次提交中断后重新运行；已有提交时不触碰历史。
-if [[ -d "$PROJECT_ROOT/.git" ]]; then
+if [[ -e "$PROJECT_ROOT/.git" ]]; then
     if git rev-parse --verify HEAD >/dev/null 2>&1; then
+        if git rev-parse --verify refs/tags/v0.1.0 >/dev/null 2>&1; then
+            log_info "Git 初始化已完成（已有 HEAD 与 v0.1.0），无需重复提交"
+            exit 0
+        fi
         log_error "当前目录已经包含提交历史，请使用常规提交流程"
         exit 1
     fi
     log_warn "检测到未完成的 Git 初始化，继续执行恢复流程"
 else
     log_info "开始初始化 Git 仓库..."
+    # Set this before invoking git so even a partially-created .git directory
+    # from a failed `git init` can be removed by the EXIT trap.
+    CREATED_REPOSITORY=1
     git init
+    ROLLBACK_UNBORN_REPOSITORY=1
     log_info "Git 仓库已初始化"
 fi
 
@@ -222,9 +246,13 @@ fi
 # 提交前的安全检查：确认敏感文件确实被忽略
 log_info "检查敏感文件是否被正确忽略..."
 SENSITIVE_LEAK=0
-for pattern in "config.json" "runtime.json" "profile.json" "settings.json" "*.keystore"; do
+for pattern in \
+    "config.json" "runtime.json" "profile.json" "settings.json" \
+    "*.keystore" "*.jks" "*.pem" "*.key" "*.p12" "*.pfx" "*.idsig" \
+    "*.asc" "*.gpg" "id_rsa" "id_ed25519" "id_ecdsa" \
+    ".env" ".env.*" "service-account-credentials.json"; do
     # 查找工作区内匹配且未被忽略的文件
-    while IFS= read -r found; do
+    while IFS= read -r -d '' found; do
         [[ -z "$found" ]] && continue
         # --no-index is required for paths that live inside nested submodules;
         # this check validates the ignore rules before the root index exists.
@@ -232,7 +260,7 @@ for pattern in "config.json" "runtime.json" "profile.json" "settings.json" "*.ke
             log_error "敏感文件未被忽略: $found"
             SENSITIVE_LEAK=1
         fi
-    done < <(find . -name "$pattern" -not -path "./.git/*" -not -path "*/third_party/*" 2>/dev/null | head -20)
+    done < <(find . -name "$pattern" -not -path "./.git/*" -not -path "*/.git/*" -not -path "*/third_party/*" -print0 2>/dev/null)
 done
 
 if [[ $SENSITIVE_LEAK -eq 1 ]]; then
@@ -243,16 +271,33 @@ fi
 log_info "敏感文件检查通过"
 
 # 嵌套 Git 仓库必须作为显式子模块记录，避免把工作树误当作普通目录。
+if [[ ! -f .gitmodules ]]; then
+    log_error "缺少 .gitmodules，无法记录嵌套仓库"
+    exit 1
+fi
 for module in core android; do
-    if [[ -d "$module/.git" ]] && ! git config -f .gitmodules --get-regexp "^submodule\..*\.path$" | grep -q "[[:space:]]$module$"; then
+    declared_path=$(git config -f .gitmodules --get "submodule.$module.path" 2>/dev/null || true)
+    declared_url=$(git config -f .gitmodules --get "submodule.$module.url" 2>/dev/null || true)
+    if [[ "$declared_path" != "$module" || -z "$declared_url" ]]; then
         log_error "嵌套仓库 $module 缺少 .gitmodules 声明"
         exit 1
     fi
-    if [[ -d "$module/.git" ]] && ! git -C "$module" rev-parse --verify HEAD >/dev/null 2>&1; then
+    if [[ -e "$module/.git" ]] && ! git -C "$module" rev-parse --verify HEAD >/dev/null 2>&1; then
         log_error "嵌套仓库 $module 没有可记录的 HEAD"
         exit 1
     fi
+    if [[ -e "$module/.git" && -n "$(git -C "$module" status --porcelain=v1 --untracked-files=all)" ]] &&
+       [[ "${SMART_BOX_ALLOW_DIRTY_SUBMODULES:-0}" != 1 ]]; then
+        log_error "嵌套仓库 $module 工作树有未提交改动；请先提交并发布该子模块（或显式设置 SMART_BOX_ALLOW_DIRTY_SUBMODULES=1）"
+        exit 1
+    fi
 done
+
+if [[ -z "$(git config --local user.name 2>/dev/null || true)" ||
+      -z "$(git config --local user.email 2>/dev/null || true)" ]]; then
+    log_error "未配置本地 Git 身份，请先设置 user.name 和 user.email"
+    exit 1
+fi
 
 # 添加初始提交
 log_info "准备初始提交..."
@@ -268,14 +313,41 @@ for generated in converter/smart-box-converter-linux-arm64; do
     fi
 done
 
+for module in core android; do
+    staged_mode=$(git ls-files --stage -- "$module" | awk 'NR == 1 {print $1}')
+    if [[ "$staged_mode" != 160000 ]]; then
+        log_error "嵌套仓库 $module 未作为 gitlink 暂存（mode=${staged_mode:-missing}）"
+        exit 1
+    fi
+done
+if ! git diff --cached --name-only -- .gitmodules | grep -Fxq .gitmodules; then
+    log_error ".gitmodules 未进入初始提交"
+    exit 1
+fi
+
 # 对最终 index 再做一次敏感路径门禁，避免忽略规则变化造成误提交。
 while IFS= read -r staged; do
     case "$staged" in
-        runtime.json|profile.json|settings.json|*/runtime.json|*/profile.json|*/settings.json|*.keystore|*.jks|*.pem|*.key|*.p12|*.pfx|*.idsig|service-account-credentials.json)
+        config.json|*/config.json|runtime.json|profile.json|settings.json|*/runtime.json|*/profile.json|*/settings.json|*.keystore|*.jks|*.pem|*.key|*.p12|*.pfx|*.idsig|*.sqlite|*.sqlite3|*.sqlite-shm|*.sqlite-wal|service-account-credentials.json|.env|.env.*|*/.env|*/.env.*)
             log_error "敏感文件已进入暂存区: $staged"
             exit 1
             ;;
     esac
+done < <(git diff --cached --name-only)
+
+# Filename rules do not catch extensionless keys or a private key embedded in
+# an otherwise innocuous text file.  Scan text entries already in the index
+# for standard private-key markers before committing.
+while IFS= read -r staged; do
+    [[ -n "$staged" ]] || continue
+    if file -b --mime "$staged" 2>/dev/null | grep -q '^text/'; then
+        if grep -Eiq -- \
+            '-----BEGIN (OPENSSH|RSA|EC|DSA|PGP) PRIVATE KEY-----|-----BEGIN PRIVATE KEY-----|openssh-key-v1' \
+            "$staged"; then
+            log_error "私钥内容已进入暂存区: $staged"
+            exit 1
+        fi
+    fi
 done < <(git diff --cached --name-only)
 
 git commit -m "chore: initial commit - smart-box v0.1.0
@@ -286,6 +358,10 @@ git commit -m "chore: initial commit - smart-box v0.1.0
 - Windows: WPF desktop client
 - Converter: Raspberry Pi subscription aggregator
 - Documentation: Complete README and guides"
+
+# A commit now exists, so the failure trap must preserve this repository if a
+# later branch/tag operation reports an error.
+ROLLBACK_UNBORN_REPOSITORY=0
 
 log_info "初始提交已完成"
 

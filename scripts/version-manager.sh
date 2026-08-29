@@ -224,6 +224,24 @@ check_version_consistency() {
         inconsistent=1
     fi
 
+    # Check the Windows project when it is present.  This keeps the product
+    # version gate honest even though Windows builds run on another host.
+    local windows_file="$PROJECT_ROOT/windows/SingBoxSmart.Windows.csproj"
+    if [[ -f "$windows_file" ]]; then
+        checked=$((checked + 1))
+        local windows_version
+        windows_version=$(sed -n 's:.*<Version>\([^<]*\)</Version>.*:\1:p' "$windows_file" | head -n 1)
+        if [[ "$windows_version" != "$expected" ]]; then
+            log_warn "Windows 版本不一致: '$windows_version' (预期: $expected)"
+            inconsistent=1
+        else
+            log_info "✓ Windows 版本一致: $windows_version"
+        fi
+    else
+        log_warn "未找到 Windows 版本文件: $windows_file"
+        inconsistent=1
+    fi
+
     # Core 为构建期注入，只做提示
     log_info "· Core 版本构建期注入（constant.Version），不做静态比对"
     log_info "· Converter 无独立版本常量，跟随 VERSION"

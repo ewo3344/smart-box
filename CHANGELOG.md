@@ -23,6 +23,13 @@
   不是 SagerNet 官方发布。
 - **.gitignore** (2026-08-27): 排除设备签名密钥、私密订阅配置、运行时
   profile/settings、验证快照和构建产物。
+- **发布/设备门禁脚本 (2026-08-29)**: 新增 `android-full-matrix.sh`、
+  `android-collect-logs.sh`、`verify-windows.ps1`、`verify-raspberry-pi.sh` 和
+  `build-all-platforms.sh`。脚本会保存脱敏证据，并把缺少真机、runner 或远端
+  连接标为 `BLOCKED/MANUAL_REQUIRED`，不把静态结果冒充端到端通过。
+- **发布门禁收敛 (2026-08-29)**: Linux 包名、Windows/Android 产物和 Core
+  查找从版本真值派生；发布门禁使用无凭据 fixture，避免误用旧的已安装 Core。
+  Android 日志收集对多设备、采集失败和无关系统属性 fail-closed。
 
 ### 已解决
 - **Go 工具链声明收敛 (2026-08-29)**: 新增根级 `TOOLCHAIN_VERSION`，将精确
@@ -31,8 +38,8 @@
   `go1.25.5` 记录继续保留为历史证据。
 
 ### 待修正
-- **Git 仓库仍未初始化**: `.gitignore` 已就位但 `git init` 未执行，
-  项目仍无版本历史。
+- **Android/Windows/树莓派环境门禁**: 自动化脚本已加入，但需要对应真机、
+  Windows runner 和树莓派连接后才能完成端到端验收。
 
 ---
 
@@ -127,7 +134,7 @@
 - Android 完整设备测试矩阵未完成（黑白名单、Fallback、分数恢复、停止按钮热区）
 - Windows 自动化测试套件缺失
 - 树莓派无监控和告警系统
-- Git 仓库未初始化，无变更历史
+- Git 初始历史已在 2026-08-29 建立（`main`、`develop` 和 `v0.1.0`）。
 - Android 274 个 CRLF 文件阻止全局 Spotless 格式化
 - Core `experimental/libbox` 主机测试因 linkname 问题被阻塞
 - FlClash 共存场景未在真实环境验证

@@ -4,7 +4,17 @@ set -eu
 source_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 project_dir=$(CDPATH= cd -- "$source_dir/.." && pwd)
 dist_dir="$project_dir/dist"
-package_name=smart-box-0.1.0-linux-x86_64
+version_file="$project_dir/VERSION"
+[ -r "$version_file" ] || {
+    printf '%s\n' "missing product version: $version_file" >&2
+    exit 1
+}
+product_version=$(sed -n '1p' "$version_file" | tr -d '[:space:]')
+printf '%s\n' "$product_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$' || {
+    printf '%s\n' "invalid product version: $product_version" >&2
+    exit 1
+}
+package_name="smart-box-${product_version}-linux-x86_64"
 package_dir="$dist_dir/$package_name"
 core="$package_dir/bin/smart-box-core"
 

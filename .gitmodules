@@ -1,6 +1,8 @@
 [submodule "core"]
 	path = core
 	url = https://github.com/ewo3344/smart-box-core.git
+	branch = main
 [submodule "android"]
 	path = android
 	url = https://github.com/ewo3344/smart-box-android.git
+	branch = main

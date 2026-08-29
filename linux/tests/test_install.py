@@ -383,6 +383,8 @@ fi
     def test_build_script_uses_clean_exact_staging_manifest(self) -> None:
         project = self.root / "package-project"
         linux_directory = project / "linux"
+        project.mkdir(parents=True)
+        (project / "VERSION").write_text("0.1.0\n", encoding="utf-8")
         package = project / "dist" / "smart-box-0.1.0-linux-x86_64"
         (linux_directory / "icons").mkdir(parents=True)
         (package / "bin").mkdir(parents=True)

@@ -263,7 +263,7 @@ def find_core() -> Path:
         Path(__file__).resolve().parent.parent / "bin" / "smart-box-core",
         Path(__file__).resolve().parent.parent
         / "dist"
-        / "smart-box-0.1.0-linux-x86_64"
+        / f"smart-box-{APP_VERSION}-linux-x86_64"
         / "bin"
         / "smart-box-core",
     ]

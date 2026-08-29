@@ -61,7 +61,9 @@ if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     Add-Result 'dotnet_available' 'BLOCKED' '.NET SDK is not installed'
 } else {
     Invoke-Check 'dotnet_info' { dotnet --info }
-    Invoke-Check 'dotnet_build' { dotnet build $windowsProject --configuration Release --no-restore }
+    # A clean checkout has no project.assets.json.  Let dotnet restore before
+    # building so this check validates a fresh runner as well as a warm one.
+    Invoke-Check 'dotnet_build' { dotnet build $windowsProject --configuration Release }
     if (-not $SkipPublish) {
         $publish = Join-Path $OutputDirectory 'publish'
         Invoke-Check 'dotnet_publish' { dotnet publish $windowsProject --configuration Release --runtime win-x64 --self-contained false --output $publish }
@@ -82,7 +84,7 @@ if ($testProjects.Count -eq 0) {
 } elseif (Get-Command dotnet -ErrorAction SilentlyContinue) {
     foreach ($test in $testProjects) {
         $safe = ($test.BaseName -replace '[^A-Za-z0-9_.-]', '_')
-        Invoke-Check "test_$safe" { dotnet test $test.FullName --configuration Release --no-restore }
+        Invoke-Check "test_$safe" { dotnet test $test.FullName --configuration Release }
     }
 }
 
@@ -91,10 +93,17 @@ if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
 } elseif (-not (Test-Path $coreProject)) {
     Add-Result 'core_toolchain' 'FAIL' 'core directory is missing'
 } else {
-    $toolchain = 'go1.26.5'
     $toolchainFile = Join-Path $root 'TOOLCHAIN_VERSION'
-    if (Test-Path $toolchainFile) { $toolchain = (Get-Content -LiteralPath $toolchainFile -TotalCount 1).Trim() }
-    Invoke-Check 'core_go_test' { Push-Location $coreProject; try { $env:GOTOOLCHAIN = $toolchain; go test ./... } finally { Pop-Location } }
+    if (-not (Test-Path $toolchainFile)) {
+        Add-Result 'core_toolchain' 'BLOCKED' "Go toolchain pin is missing: $toolchainFile"
+    } else {
+        $toolchain = (Get-Content -LiteralPath $toolchainFile -TotalCount 1).Trim()
+        if ($toolchain -notmatch '^go[0-9]+\.[0-9]+\.[0-9]+$') {
+            Add-Result 'core_toolchain' 'FAIL' "Invalid Go toolchain pin: $toolchain"
+        } else {
+            Invoke-Check 'core_go_test' { Push-Location $coreProject; try { $env:GOTOOLCHAIN = $toolchain; go test ./... } finally { Pop-Location } }
+        }
+    }
 }
 
 Add-Result 'gui_automation' 'BLOCKED' 'WinAppDriver/UI Automation runner is not configured'

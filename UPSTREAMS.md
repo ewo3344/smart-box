@@ -7,6 +7,8 @@ smart-box is a modified distribution, not an official SagerNet release.
 - Upstream: <https://github.com/SagerNet/sing-box>
 - Imported base: `db1053f8bc16c860225afc97ac6417e42a81dc64`
 - Local component: `core/`
+- Public smart-box ref: `6039b0bd46cc605845f5c00840eee73505690a3e`
+- Public source: <https://github.com/ewo3344/smart-box-core>
 - License: GNU General Public License, version 3 or later. The upstream
   `core/LICENSE` file and copyright notices are retained.
 
@@ -20,6 +22,8 @@ where those extensions are not used.
 - Upstream: <https://github.com/SagerNet/sing-box-for-android>
 - Imported base: `8f6343802a6d8e0fa478d9e642cbb58c147e671b`
 - Local component: `android/`
+- Public smart-box ref: `fd6e4589fe249e8b69c0f4888077e43ee5a64906`
+- Public source: <https://github.com/ewo3344/smart-box-android>
 - License: GNU General Public License, version 3 or later. The upstream
   `android/LICENSE` file and copyright notices are retained.
 

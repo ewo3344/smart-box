@@ -6,10 +6,27 @@ set -u
 
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 toolchain_file="$root/TOOLCHAIN_VERSION"
-toolchain=go1.26.5
-if [ -r "$toolchain_file" ]; then
-    toolchain=$(sed -n '1p' "$toolchain_file" | tr -d '[:space:]')
+if [ ! -r "$toolchain_file" ]; then
+    printf '%s\n' "release pipeline: missing $toolchain_file" >&2
+    exit 1
 fi
+toolchain=$(sed -n '1p' "$toolchain_file" | tr -d '[:space:]')
+if ! printf '%s\n' "$toolchain" | grep -Eq '^go[0-9]+\.[0-9]+\.[0-9]+$'; then
+    printf '%s\n' "release pipeline: invalid Go toolchain pin: $toolchain" >&2
+    exit 1
+fi
+
+version_file="$root/VERSION"
+if [ ! -r "$version_file" ]; then
+    printf '%s\n' "release pipeline: missing $version_file" >&2
+    exit 1
+fi
+product_version=$(sed -n '1p' "$version_file" | tr -d '[:space:]')
+if ! printf '%s\n' "$product_version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$'; then
+    printf '%s\n' "release pipeline: invalid product version: $product_version" >&2
+    exit 1
+fi
+package_name="smart-box-${product_version}-linux-x86_64"
 
 out="$root/verification/build-all-platforms-$(date +%Y%m%d-%H%M%S)"
 allow_missing=0
@@ -95,7 +112,11 @@ run_step linux_unit env \
 run_step shell_syntax sh -n \
     "$root/linux/build-package.sh" "$root/linux/install.sh" \
     "$root/linux/uninstall.sh" "$root/linux/smart-box" \
-    "$root/linux/smart-box-profile" "$root/scripts"/*.sh
+    "$root/linux/smart-box-profile" "$root/scripts/init-git.sh" \
+    "$root/scripts/sign-android-device.sh" "$root/scripts/verify-raspberry-pi.sh" \
+    "$root/scripts/verify-release.sh" "$root/scripts/version-manager.sh"
+run_step android_matrix_syntax bash -n "$root/scripts/android-full-matrix.sh"
+run_step android_log_syntax bash -n "$root/scripts/android-collect-logs.sh"
 
 if command -v systemd-analyze >/dev/null 2>&1; then
     run_step systemd_units systemd-analyze verify \
@@ -119,10 +140,21 @@ fi
 
 if [ "$run_release" -eq 1 ]; then
     if [ -x "$root/scripts/verify-release.sh" ]; then
-        if [ -x /usr/local/lib/smart-box/smart-box-core ] || [ -x "$root/dist/smart-box-0.1.0-linux-x86_64/bin/smart-box-core" ]; then
-            run_step release_gate sh "$root/scripts/verify-release.sh" --allow-live
+        if [ -x "$root/dist/$package_name/bin/smart-box-core" ]; then
+            if [ "${SMART_BOX_ALLOW_LIVE:-0}" = 1 ]; then
+                run_step release_gate sh "$root/scripts/verify-release.sh" --allow-live
+            else
+                run_step release_gate sh "$root/scripts/verify-release.sh"
+            fi
+        elif [ "${SMART_BOX_ALLOW_INSTALLED_CORE:-0}" = 1 ] &&
+             [ -x /usr/local/lib/smart-box/smart-box-core ]; then
+            if [ "${SMART_BOX_ALLOW_LIVE:-0}" = 1 ]; then
+                run_step release_gate sh "$root/scripts/verify-release.sh" --allow-live
+            else
+                run_step release_gate sh "$root/scripts/verify-release.sh"
+            fi
         else
-            blocked_step release_gate "no validated smart-box core binary"
+            blocked_step release_gate "no validated Core for $package_name"
         fi
     else
         blocked_step release_gate "scripts/verify-release.sh is missing"
@@ -136,13 +168,20 @@ else
 fi
 
 if command -v pwsh >/dev/null 2>&1; then
+    powershell_bin=pwsh
+elif command -v powershell.exe >/dev/null 2>&1; then
+    powershell_bin=powershell.exe
+else
+    powershell_bin=
+fi
+if [ -n "$powershell_bin" ]; then
     if command -v dotnet >/dev/null 2>&1; then
-        run_step windows_verify pwsh -NoLogo -NoProfile -File "$root/scripts/verify-windows.ps1" -OutputDirectory "$out/windows"
+        run_step windows_verify "$powershell_bin" -NoLogo -NoProfile -File "$root/scripts/verify-windows.ps1" -OutputDirectory "$out/windows"
     else
         blocked_step windows_verify ".NET SDK is unavailable"
     fi
 else
-    blocked_step windows_verify "PowerShell 7 is unavailable on this host"
+    blocked_step windows_verify "PowerShell is unavailable on this host"
 fi
 
 if [ -n "${RASPBERRY_PI_HOST:-}" ] && [ -x "$root/scripts/verify-raspberry-pi.sh" ]; then
@@ -172,4 +211,3 @@ if [ "$blocked" -gt 0 ] && [ "$allow_missing" -ne 1 ]; then
     exit 2
 fi
 exit 0
-

@@ -123,6 +123,9 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 
 **描述**: 在 vivo V2352A 上完成完整功能验证
 
+**自动化入口**: `scripts/android-full-matrix.sh` 已完成；当前无授权真机时
+仅能通过 JVM/静态门禁，设备项保持 `BLOCKED`。
+
 **子任务**:
 1. 域名黑白名单端到端测试
    - 添加白名单域名，验证强制 DIRECT
@@ -172,6 +175,9 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 
 **描述**: 构建 Windows 客户端的自动化测试框架
 
+**自动化入口**: `scripts/verify-windows.ps1` 已加入环境、项目元数据和发布检查；
+GUI/网络 E2E 仍需 Windows runner。
+
 **子任务**:
 1. 环境搭建
    - 配置 Windows Server 2022 测试 VM
@@ -220,6 +226,8 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 
 **描述**: 将 `SMART-BOX-PLAN.md` 中的发布命令自动化
 
+**自动化入口**: `scripts/build-all-platforms.sh` 已加入统一报告和失败/阻塞退出码。
+
 **子任务**:
 1. 脚本增强
    - 扩展 `scripts/verify-release.sh`
@@ -259,6 +267,9 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 **工时**: 4 天
 
 **描述**: 建立树莓派服务的健康监控和告警
+
+**自动化入口**: `scripts/verify-raspberry-pi.sh` 提供只读 SSH 健康检查；告警发送
+仍由部署环境配置。
 
 **子任务**:
 1. 健康检查脚本
@@ -337,6 +348,8 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 **工时**: 2 天
 
 **描述**: 建立标准化的 Android 日志收集流程
+
+**自动化入口**: `scripts/android-collect-logs.sh` 已提供分类、脱敏和错误签名摘要。
 
 **子任务**:
 1. 日志标签规范
@@ -597,8 +610,10 @@ smart-box 是一个基于 sing-box 1.14.0-beta.14 的 GPL 分支，实现了自�
 
 ---
 
-### TD003: Git 历史缺失
-**描述**: 项目目录不在 Git 根目录或未初始化 Git
+### TD003: Git 历史缺失（已解决）
+**状态**: 已解决（2026-08-29）。根仓库已初始化，建立 `main`、`develop` 和
+`v0.1.0`，Android/Core 通过 `.gitmodules` 子模块指针管理。
+**描述**: 项目目录不在 Git 根目录或未初始化 Git（历史记录）
 
 **影响**: 无法追踪变更历史，难以协作
 

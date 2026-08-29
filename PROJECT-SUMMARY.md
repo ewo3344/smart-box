@@ -384,7 +384,8 @@ smart-box 是一个增强型代理工具，基于 sing-box 1.14.0-beta.14 开发
 
 ### 技术债务
 
-1. **Git 历史缺失**: 项目目录不在 Git 根或未初始化，难以追踪变更
+1. **Git 历史已建立**: 根仓库已初始化并包含 `main`、`develop` 和 `v0.1.0`；
+   Android/Core 仍以子模块指针管理
 2. **Android Spotless**: 274 个 CRLF 文件阻止全局格式化
 3. **Core libbox 测试**: linkname 问题阻止主机 `go test ./experimental/libbox`
 4. **Windows 测试覆盖低**: 缺少自动化测试套件
