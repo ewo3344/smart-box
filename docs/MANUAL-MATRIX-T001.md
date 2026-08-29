@@ -21,8 +21,8 @@
 | 9 | NODE_SCORE_FAILURE_PENALTY | | 2026-08-29 | 关 Wi-Fi/数据后对全局 Smart 节点测速，logcat 出现 unavailable: context deadline exceeded，组页 Smart 时延数字消失（DIRECT 仍 227ms）；组页 Score 为 urlTestDelay，未见 +500 失败罚分 |
 | 10 | NODE_SCORE_SEVEN_DAY_DECAY | DEFERRED | 2026-08-29 | 七天衰减无法在单次会话验证；需跨至少 7 日的节点分数对照，本轮无该时间窗口 |
 | 11 | WIFI_MOBILE_NETWORK_SWITCH | PASS | 2026-08-29 | 关闭 Wi-Fi 后 VPNService 仍 `isForeground=true`、sessionId=smart-box、前台通知仍在；再打开 Wi-Fi 后 VPN 仍保持前台 |
-| 12 | DOUYIN_COMMENT_POST | PASS | 2026-08-29 | 推荐流视频打开评论区并发表评论，条数 15→16，列表出现「刚刚」 |
-| 13 | TELEGRAM_SEND_RECEIVE | PASS | 2026-08-29 | Telegram 会话内发出新消息后界面显示 Sent/Seen，同会话同时出现 Received 新消息 |
+| 12 | DOUYIN_COMMENT_POST | | 2026-08-29 | 推荐流视频打开评论区并发表评论，条数 15→16，列表出现「刚刚」 |
+| 13 | TELEGRAM_SEND_RECEIVE | | 2026-08-29 | Telegram 会话内发出新消息后界面显示 Sent/Seen，同会话同时出现 Received 新消息 |
 | 14 | NOTIFICATION_PERMISSION | PASS | 2026-08-29 | POST_NOTIFICATIONS 为 granted；运行中前台通知存在且含「停止」动作 |
 | 15 | VPN_CONSENT | PASS | 2026-08-29 | VPNService 已绑定；vpn_management 显示 active package 为本应用、sessionId=smart-box、active type=1 |
 
