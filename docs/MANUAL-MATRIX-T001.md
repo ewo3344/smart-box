@@ -5,6 +5,8 @@
 **自动化报告**: 本地 verification 目录（不入库）
 **签核日期**: 2026-08-29
 
+**0.1.1 覆盖安装 (2026-08-30)**: BLOCKED。`~/.android/debug.keystore` SHA-256 `2e8d0212…` 与设备已装 0.1.0 签名 `8de57370…` 不是同一把 key。未卸载、未覆盖安装（保留设备 profile/cache）。人工 14 项结论沿用 0.1.0 观察；第 12 项保持 DEFERRED。
+
 脚本 `scripts/android-full-matrix.sh` 按设计不推断以下项目，需人工签核。
 每项填写：结论(PASS/FAIL) / 执行时间 / 观察到的现象。
 

@@ -34,7 +34,7 @@
 - [ ] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`
   - 验收标准：`START=PASS STOP=PASS FAILURES=0 BLOCKED_COUNT=0`
   - `RESULT=MANUAL_REQUIRED` + `exit 2` 为预期（15 项人工计数）
-  - 未完成：0.1.0 已跑通；**0.1.1 未在 vivo 覆盖安装**（无授权，不重跑）。阻塞可发布。
+  - **BLOCKED**：0.1.1 覆盖安装因签名不匹配未执行，未重跑矩阵。阻塞可发布。
 - [x] `docs/MANUAL-MATRIX-T001.md` 签核完成（12/15 PASS，1/15 FAIL 第 9 项，2/15 DEFERRED 第 10、12 项）
 
 ### 树莓派
@@ -66,7 +66,7 @@
 - [ ] 验证所有产物可安装：
   - [x] Linux: tar.gz 解压 + `install.sh`（2026-08-30 冒烟：两 unit active，卸载后 SmartBox 消失、直连恢复，日常出口重装 0.1.1）
   - [ ] Android: APK 安装（覆盖安装保留数据）
-        **未完成**：0.1.1 未在 vivo 覆盖安装（无授权）。阻塞可发布。
+        **BLOCKED**：`~/.android/debug.keystore` SHA-256 `2e8d0212…` ≠ 设备 0.1.0 签名 `8de57370…`。未卸载、未 `install -r`。阻塞可发布。
   - [ ] Windows: zip 解压 + exe 启动
         部分：Linux 上已解压（README + config + 两 exe）且 PE32+ 确认；**exe 启动未做**。阻塞可发布。
 
@@ -139,7 +139,7 @@
 必须保持开放（不得改写成 PASS）：
 
 - **Windows 运行时未验证**（交叉编译产物，无 Windows 真机：托盘启动、系统代理、core 重启）
-- **Android 0.1.1 未在 vivo 覆盖安装验证**（无授权，不重跑 `android-full-matrix`）
+- **Android 0.1.1 覆盖安装 BLOCKED**（签名不匹配：本机 debug.keystore `2e8d0212…` ≠ 设备 0.1.0 `8de57370…`；未卸载、未安装）
 
 其余未勾且不构成放行的项：发布日 Git/GitHub/冒烟全部未做（硬边界）；性能回归未采数；`build-all-platforms.sh` 未单独跑。
 
@@ -151,4 +151,4 @@ gitlink 仍为脏工作树（`M android` / `M core`），未暂存。
 
 **维护者**: @ewo3344
 **首次创建**: 2026-08-30
-**最后更新**: 2026-08-30（Q6 对账，结论：不可发布）
+**最后更新**: 2026-08-30（vivo 0.1.1 覆盖安装 BLOCKED，结论：不可发布）

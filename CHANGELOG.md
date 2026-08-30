@@ -16,6 +16,7 @@
 - **Linux 0.1.1 tar.gz 冒烟 (2026-08-30)**: 解压 `smart-box-0.1.1-linux-x86_64.tar.gz`，包内 `sha256sum -c SHA256SUMS` 全部成功。`sudo ./install.sh` 因 uid 0 拒绝（需桌面用户走 pkexec）。桌面用户 `./install.sh` 覆盖安装后 `smart-box@e` 与 `smart-box-watchdog@e` 两次均为 `active`。卸载后两 unit inactive、`SmartBox` 接口消失、直连 `example.com` HTTP/2 200。本机为日常出口，已重装 0.1.1 并拉起两 unit（`SmartBox` 恢复）。
 - **Windows 165MB 定论 (2026-08-30)**: `build-windows.ps1` 为 `--self-contained true`，未带 `PublishTrimmed`。试加 `-p:PublishTrimmed=true` 被 SDK 拒绝（`NETSDK1175`，Windows 窗体不支持剪裁）。属 self-contained + WPF/WinForms 正常代价，不改打包方式、不重打 zip。
 - **v0.1.1 发布前对账 (2026-08-30)**: `RELEASE-CHECKLIST-v0.1.1.md` 已逐项勾选。结论 **不可发布**：Windows 运行时未验证；Android 0.1.1 未在 vivo 覆盖安装。其余绿灯不构成放行。
+- **Android 0.1.1 vivo 覆盖安装 (2026-08-30)**: BLOCKED。`~/.android/debug.keystore` SHA-256 `2e8d0212…` 与设备已装 0.1.0 签名 `8de57370…` 不一致。未卸载、未安装。设备仍为 `0.1.0-core.1.14.0-beta.14` / `versionCode=10000`。
 - **树莓派健康检查 (2026-08-30)**: `scripts/verify-raspberry-pi.sh --host smart-box-pi` 报告 Result PASS、非 BLOCKED；`smart-box-converter.service` 与 `smart-box.service` 为 active，route-bypass 规则 8998/8999 存在；`file_profile.json=present` 与 `file_cache.db=present`（完整性通过）。
 - **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。`--setup-remotes` 在 submodule 工作树加 `publish` remote 指向 fork，不更新 gitlink。
 

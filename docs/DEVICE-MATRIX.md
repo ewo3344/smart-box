@@ -42,6 +42,8 @@
 
 - 第 9 项失败罚分：手动 urlTest 经 `applySmartProbeState` 写入 `failures` 并更新 score，组页只显示 `urlTestDelay`，未见 +500。计划 v0.1.2。
 
+**0.1.1 覆盖安装 (2026-08-30)**: BLOCKED（签名不匹配）。设备仍为 `0.1.0-core.1.14.0-beta.14` / `versionCode=10000`。`~/.android/debug.keystore` SHA-256 `2e8d0212…` ≠ 已装 0.1.0 的 `8de57370…`。未卸载、数据保留；未跑 0.1.1 `android-full-matrix.sh`。VPN 当时为关（`Active vpn type: -1`，`sessionId=null`）。
+
 **证据位置**: 本地 `verification/` 目录（不入库）
 
 ---
