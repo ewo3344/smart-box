@@ -16,6 +16,7 @@
 - **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。`--setup-remotes` 在 submodule 工作树加 `publish` remote 指向 fork，不更新 gitlink。
 
 ### 修复
+- **Windows 交叉编译包 (2026-08-30)**: `build-windows.ps1` 在 Linux 上设置 `GOOS=windows` 与 `EnableWindowsTargeting`，并把 `README.md`、`config/` 模板打进 zip。
 - **树莓派健康检查误报 missing (2026-08-30)**: `/var/lib/smart-box/profile.json` 与 `cache.db` 实际存在但目录为 root `0700`，无特权 SSH 用户看不到。`verify-raspberry-pi.sh` 对这两条路径增加 `sudo -n` 探测，并把 `file_*=present` 纳入 PASS 条件。
 - **TUN 无法启动（部署配置，2026-08-25）**: `smart-box@e.service` 被运行时 mask 且「🎯 基准 Smart」缓存选中已失效的「🇬🇧 英国 Smart」，导致 baseline-dns 与 GitHub 链路 DNS 全部超时、联网验收循环失败。解除 runtime mask，将基准/GitHub 组固定到健康的「🇸🇬 新加坡 Smart」（settings.json 与 runtime.json 同步），备份并移除残留选择的 cache.db。详见 `tun-startup-fix-2026-08-25/`。
 

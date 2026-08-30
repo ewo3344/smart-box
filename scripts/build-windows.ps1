@@ -76,6 +76,13 @@ try {
     Pop-Location
 }
 
+$windowsReadme = Join-Path $WindowsClient "README.md"
+$configDir = Join-Path $WindowsClient "config"
+if (-not (Test-Path $windowsReadme)) { throw "missing Windows package README: $windowsReadme" }
+if (-not (Test-Path $configDir)) { throw "missing Windows config templates: $configDir" }
+Copy-Item -LiteralPath $windowsReadme -Destination (Join-Path $Staging "README.md") -Force
+Copy-Item -LiteralPath $configDir -Destination (Join-Path $Staging "config") -Recurse -Force
+
 if (Test-Path $Publish) {
     Remove-Item -Recurse -Force $Publish
 }
@@ -84,8 +91,11 @@ if (Test-Path $Archive) {
     Remove-Item -Force $Archive
 }
 Compress-Archive -Path (Join-Path $Publish "*") -DestinationPath $Archive -Force
+$ChecklistArchive = Join-Path $Dist "smart-box-$SmartVersion-windows-x64.zip"
+Copy-Item -LiteralPath $Archive -Destination $ChecklistArchive -Force
 Write-Output "WINDOWS_PACKAGE=$Publish"
 Write-Output "WINDOWS_ARCHIVE=$Archive"
+Write-Output "WINDOWS_CHECKLIST_ARCHIVE=$ChecklistArchive"
 } finally {
     if (Test-Path $Staging) {
         Remove-Item -Recurse -Force $Staging

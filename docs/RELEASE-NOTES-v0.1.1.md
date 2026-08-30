@@ -12,7 +12,7 @@
 
 - **Android T001 完整设备矩阵**：自动化脚本 `scripts/android-full-matrix.sh` 实现 START/STOP 生命周期验证，人工矩阵覆盖 15 项功能场景（12/15 实测通过，3/15 有明确 DEFERRED 理由）
 - **树莓派健康检查**：`scripts/verify-raspberry-pi.sh` 实现只读 SSH 健康检查，覆盖服务状态、route-bypass 规则、profile/cache 完整性
-- **Windows 验证脚本**：`scripts/verify-windows.ps1` 完成环境门禁框架（等待 Windows runner 端到端验证）
+- **Windows 验证脚本**：`scripts/verify-windows.ps1` 完成环境门禁框架。zip 已在 Linux 上交叉编译（PE32+），运行时托盘/系统代理/core 重启仍需 Windows 真机
 - **Submodule 发布门禁**：`scripts/publish-submodules.sh --check` 实现 fail-closed 检查，防止 gitlink 指向不含产品代码的 commit
 
 ### 工具链收敛
@@ -50,13 +50,14 @@
 
 | 平台 | 状态 | 原因 |
 |------|------|------|
-| **Windows** | 待验证 | 等待 Windows runner 环境配置 |
+| **Windows 运行时** | 未验证 | 包已构建（Linux 交叉编译，PE32+ 验证通过），尚未在 Windows 上验证托盘启动、系统代理与 core 重启 |
 
 ---
 
 ## 已知问题
 
 - **Android 第 9 项（NODE_SCORE_FAILURE_PENALTY）**：关网后手动测速时，UI 组页未显示 +500 失败罚分。待确认是否为预期行为（罚分仅在实际连接失败时触发 vs 测速失败也触发）。不影响正常使用。
+- **Windows 客户端体积**：self-contained `smart-box.exe` 约 165MB。裁剪 / framework-dependent 打包延到 v0.1.2。
 
 ---
 

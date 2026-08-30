@@ -42,10 +42,11 @@
 - [ ] converter/core 服务 active
 - [ ] Route-bypass 规则生效
 
-### Windows（环境就绪时）
+### Windows
 
-- [ ] `scripts/verify-windows.ps1 -OutputDirectory verification\windows-verify-<timestamp>`
-- [ ] 构建成功，托盘应用可启动
+- [x] 交叉编译产物生成（Linux 上 `scripts/build-windows.ps1`，产出 `dist/smart-box-0.1.1-windows-x64.zip`，PE32+）
+- [ ] 运行时验证（需 Windows 机器：托盘启动、系统代理、core 崩溃重启）
+      未完成时 Release Notes 必须标注 Windows 运行时未验证
 
 ### 性能回归
 
