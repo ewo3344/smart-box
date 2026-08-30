@@ -1,22 +1,22 @@
 # v0.1.1 Release Checklist
 
-**Target Date**: 2026-09-12
+**发布时间**: 由维护者决定
 **Type**: Patch Release
 **Focus**: 测试覆盖和稳定性收敛
 
 ---
 
-## 准备阶段（Release - 7 days）
+## 准备阶段
 
 - [x] 创建 release 分支: `git checkout -b release/v0.1.1`
 - [x] 更新版本号: `./scripts/version-manager.sh bump 0.1.1 --yes`
 - [x] 验证版本一致性: `./scripts/version-manager.sh check`
-- [x] 更新 CHANGELOG.md（将 `[未发布]` 改为 `[0.1.1] - 2026-09-12`）
+- [x] 更新 CHANGELOG.md（将 `[未发布]` 改为 `[0.1.1]`；发布时间由维护者决定）
 - [x] 冻结新功能（仅接受 bugfix）
 
 ---
 
-## 测试阶段（Release - 5 days）
+## 测试阶段
 
 ### Linux
 
@@ -58,7 +58,7 @@
 
 ---
 
-## 构建阶段（Release - 3 days）
+## 构建阶段
 
 - [ ] `scripts/build-all-platforms.sh`
       未完成：本分支未单独执行；Linux 单测已由 `verify-release.sh` 覆盖。非阻塞。
@@ -77,7 +77,7 @@
 
 ---
 
-## 文档阶段（Release - 2 days）
+## 文档阶段
 
 - [x] 更新 README.md（如有变更）（本 patch 无需改产品 README）
 - [x] 编写 `docs/RELEASE-NOTES-v0.1.1.md`
@@ -113,7 +113,7 @@
 
 ---
 
-## 发布后（Release + 1 day）
+## 发布后
 
 - [ ] 监控 GitHub Issues 和社区反馈（如有）
 - [ ] 更新 `SMART-BOX-PLAN.md` 和 `DEVELOPMENT-PLAN.md` 的里程碑状态
@@ -134,7 +134,7 @@
 
 ## 发布前结论（2026-08-30）
 
-**不可发布。** 目标日 2026-09-12，距今约 13 天。本结论供放行判断，**不是发布信号**。禁止因此合并 `main`、打 `v0.1.1` tag、或创建 GitHub Release。
+**不可发布。** 发布时间由维护者决定。本结论供放行判断，**不是发布信号**。禁止因此合并 `main`、打 `v0.1.1` tag、或创建 GitHub Release。
 
 必须保持开放（不得改写成 PASS）：
 

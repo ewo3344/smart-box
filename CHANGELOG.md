@@ -7,7 +7,7 @@
 
 ---
 
-## [0.1.1] - 2026-09-12
+## [0.1.1] - 发布时间由维护者决定
 
 ### 验收
 - **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
