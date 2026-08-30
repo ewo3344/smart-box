@@ -29,18 +29,18 @@
 
 - 域名黑白名单（1–4）: PASS
 - 地区选择与 Fallback（5–7）: PASS
-- 节点分数机制（8–9）: 第 8 项 PASS；第 9 项 FAIL（待确认，未见 +500）
+- 节点分数机制（8–9）: 第 8 项 PASS；第 9 项 FAIL（手动 urlTest 写 `failures`，组页只显示 `urlTestDelay`，未见 +500）
 - 七天衰减（10）: DEFERRED（单次会话无法验证）
 - 网络切换（11）: PASS
 - 抖音评论（12）: DEFERRED（隐私保护）
 - Telegram 收发（13）: PASS
 - 通知权限、VPN 授权（14–15）: PASS
 
-汇总：12/15 实测 PASS，3/15 DEFERRED 或待确认（第 9、10、12 项）。
+汇总：12/15 实测 PASS，1/15 FAIL（第 9 项），2/15 DEFERRED（第 10、12 项）。
 
 **已知问题**:
 
-- 第 9 项失败罚分未在 UI 显示 +500，待确认是否仅在实际连接失败时触发（相对主动测速失败）
+- 第 9 项失败罚分：手动 urlTest 经 `applySmartProbeState` 写入 `failures` 并更新 score，组页只显示 `urlTestDelay`，未见 +500。计划 v0.1.2。
 
 **证据位置**: 本地 `verification/` 目录（不入库）
 

@@ -11,7 +11,8 @@
 
 ### 验收
 - **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
-- **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 9 项失败罚分为 FAIL（待确认）；第 10、12 项 DEFERRED。
+- **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 9 项失败罚分为 FAIL；第 10、12 项 DEFERRED。
+- **T001 第 9 项代码定论 (2026-08-30)**: 组页「测试」走 `StartedService.URLTest` → `Smart.CheckOutbounds` → `probe(force=true)` → `applySmartProbeState`，测速失败写 `failures` 并 `queueScore`；组页只渲染 `urlTestDelay`。第 9 项保持 FAIL，计划 v0.1.2，v0.1.1 不改 core。
 - **树莓派健康检查 (2026-08-30)**: `scripts/verify-raspberry-pi.sh --host smart-box-pi` 报告 Result PASS、非 BLOCKED；`smart-box-converter.service` 与 `smart-box.service` 为 active，route-bypass 规则 8998/8999 存在；`file_profile.json=present` 与 `file_cache.db=present`（完整性通过）。
 - **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。`--setup-remotes` 在 submodule 工作树加 `publish` remote 指向 fork，不更新 gitlink。
 

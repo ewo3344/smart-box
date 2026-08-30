@@ -10,7 +10,7 @@
 
 ### 测试基础设施完善
 
-- **Android T001 完整设备矩阵**：自动化脚本 `scripts/android-full-matrix.sh` 实现 START/STOP 生命周期验证，人工矩阵覆盖 15 项功能场景（12/15 实测通过，3/15 有明确 DEFERRED 理由）
+- **Android T001 完整设备矩阵**：自动化脚本 `scripts/android-full-matrix.sh` 实现 START/STOP 生命周期验证，人工矩阵覆盖 15 项功能场景（12/15 PASS，1/15 FAIL 第 9 项，2/15 DEFERRED 第 10、12 项）
 - **树莓派健康检查**：`scripts/verify-raspberry-pi.sh` 实现只读 SSH 健康检查，覆盖服务状态、route-bypass 规则、profile/cache 完整性
 - **Windows 验证脚本**：`scripts/verify-windows.ps1` 完成环境门禁框架。zip 已在 Linux 上交叉编译（PE32+），运行时托盘/系统代理/core 重启仍需 Windows 真机
 - **Submodule 发布门禁**：`scripts/publish-submodules.sh --check` 实现 fail-closed 检查，防止 gitlink 指向不含产品代码的 commit
@@ -41,7 +41,7 @@
 | 平台 | 状态 | 证据 |
 |------|------|------|
 | **Linux** | PASS | `scripts/verify-release.sh --allow-live` |
-| **Android** | PASS | T001 自动化 + 12/15 人工矩阵，vivo V2352A (Android 16) |
+| **Android** | PASS（自动化） / 人工 12/15 PASS、1 FAIL、2 DEFERRED | T001 自动化 + 人工矩阵，vivo V2352A (Android 16)；第 9 项见已知问题 |
 | **树莓派** | PASS | converter/core active，route-bypass 生效，profile/cache present |
 | **Converter** | PASS | Go 测试（含 `-race`）全部通过 |
 | **Submodule** | PASS | gitlink 在 fork 远端可达且含 smart 代码 |
@@ -56,7 +56,10 @@
 
 ## 已知问题
 
-- **Android 第 9 项（NODE_SCORE_FAILURE_PENALTY）**：关网后手动测速时，UI 组页未显示 +500 失败罚分。待确认是否为预期行为（罚分仅在实际连接失败时触发 vs 测速失败也触发）。不影响正常使用。
+- **Android 第 9 项（NODE_SCORE_FAILURE_PENALTY）**：
+  - 触发条件：组页对 Smart 组点「测试」。路径为 `StartedService.URLTest` → `Smart.CheckOutbounds` → `probe(force=true)` → `applySmartProbeState`。关网后测速失败会 `state.failures++` 并 `queueScore`。
+  - 影响范围：失败计数进入 score（默认每次 +500），影响后续选路；组页只渲染 `urlTestDelay`，T001 未见 +500。Dial/Listen 真实连接失败路径的 `recordFailure` 不受此项文档变更影响。v0.1.1 不改 core。
+  - 计划修复：v0.1.2（组页展示罚分，或让手动 urlTest 只写 History、不走 `applySmartProbeState`）。
 - **Windows 客户端体积**：self-contained `smart-box.exe` 约 165MB。裁剪 / framework-dependent 打包延到 v0.1.2。
 
 ---
