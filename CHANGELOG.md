@@ -12,14 +12,15 @@
 ### 验收
 - **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
 - **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 9 项失败罚分为 FAIL（待确认）；第 10、12 项 DEFERRED。
-- **树莓派健康检查 (2026-08-30)**: `scripts/verify-raspberry-pi.sh --host smart-box-pi` 报告 Result PASS、非 BLOCKED；`smart-box-converter.service` 与 `smart-box.service` 为 active，route-bypass 规则 8998/8999 存在。远端 `profile.json` 与 `cache.db` 标记为 missing（未当作完整性通过）。
+- **树莓派健康检查 (2026-08-30)**: `scripts/verify-raspberry-pi.sh --host smart-box-pi` 报告 Result PASS、非 BLOCKED；`smart-box-converter.service` 与 `smart-box.service` 为 active，route-bypass 规则 8998/8999 存在；`file_profile.json=present` 与 `file_cache.db=present`（完整性通过）。
 - **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。`--setup-remotes` 在 submodule 工作树加 `publish` remote 指向 fork，不更新 gitlink。
 
 ### 修复
+- **树莓派健康检查误报 missing (2026-08-30)**: `/var/lib/smart-box/profile.json` 与 `cache.db` 实际存在但目录为 root `0700`，无特权 SSH 用户看不到。`verify-raspberry-pi.sh` 对这两条路径增加 `sudo -n` 探测，并把 `file_*=present` 纳入 PASS 条件。
 - **TUN 无法启动（部署配置，2026-08-25）**: `smart-box@e.service` 被运行时 mask 且「🎯 基准 Smart」缓存选中已失效的「🇬🇧 英国 Smart」，导致 baseline-dns 与 GitHub 链路 DNS 全部超时、联网验收循环失败。解除 runtime mask，将基准/GitHub 组固定到健康的「🇸🇬 新加坡 Smart」（settings.json 与 runtime.json 同步），备份并移除残留选择的 cache.db。详见 `tun-startup-fix-2026-08-25/`。
 
 ### 新增
-- **树莓派健康检查首次运行 (2026-08-30)**: converter/core 服务 active，route-bypass 规则生效；profile/cache 文件在该次远端检查中为 missing。
+- **树莓派健康检查首次运行 (2026-08-30)**: converter/core 服务 active，route-bypass 规则生效，profile/cache 完整性通过。
 - 版本控制文档和工具 (2026-08-24)
 - 完整的开发计划和项目总结 (2026-08-24)
 - Git 分支策略和 Commit 规范 (2026-08-24)

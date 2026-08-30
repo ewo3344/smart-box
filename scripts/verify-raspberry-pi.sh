@@ -121,6 +121,8 @@ printf "ip_rule_lines\\n"
 for path in /var/lib/smart-box/profile.json /var/lib/smart-box/cache.db; do
   if [ -f "$path" ]; then
     printf "file_%s=present,size=%s,sha256=%s\\n" "$(basename "$path")" "$(stat -c %s "$path" 2>/dev/null || printf 0)" "$(sha256sum "$path" 2>/dev/null | awk "{print \$1}")"
+  elif sudo -n test -f "$path" 2>/dev/null; then
+    printf "file_%s=present,size=%s,sha256=%s\\n" "$(basename "$path")" "$(sudo -n stat -c %s "$path" 2>/dev/null || printf 0)" "$(sudo -n sha256sum "$path" 2>/dev/null | awk "{print \$1}")"
   else
     printf "file_%s=missing\\n" "$(basename "$path")"
   fi
@@ -149,6 +151,12 @@ if ! grep -Eq '^ip_rule_8998=[1-9][0-9]*$' "$raw"; then
     failed=$((failed + 1))
 fi
 if ! grep -Eq '^ip_rule_8999=[1-9][0-9]*$' "$raw"; then
+    failed=$((failed + 1))
+fi
+if ! grep -Eq '^file_profile.json=present,' "$raw"; then
+    failed=$((failed + 1))
+fi
+if ! grep -Eq '^file_cache.db=present,' "$raw"; then
     failed=$((failed + 1))
 fi
 
