@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Callable, Iterable
 
 
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 CORE_VERSION = "1.14.0-beta.14"
 SERVICE_USER = pwd.getpwuid(os.getuid()).pw_name
 SERVICE_UNIT = os.environ.get("SMART_BOX_SERVICE_UNIT", f"smart-box@{SERVICE_USER}.service")
