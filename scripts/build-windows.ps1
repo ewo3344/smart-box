@@ -52,16 +52,25 @@ New-Item -ItemType Directory -Force $Staging | Out-Null
 try {
 Push-Location $Core
 try {
+    $previousGoos = $env:GOOS
+    $previousGoarch = $env:GOARCH
+    $previousCgo = $env:CGO_ENABLED
+    $env:GOOS = "windows"
+    $env:GOARCH = "amd64"
+    $env:CGO_ENABLED = "0"
     $ldflags = "-X github.com/sagernet/sing-box/constant.Version=smart-box-$SmartVersion-core-$UpstreamVersion -s -w -buildid="
     & $GoCommand build -tags "with_gvisor,with_quic,with_wireguard,with_utls,with_clash_api" -trimpath -ldflags $ldflags -o (Join-Path $Staging "smart-box-core.exe") .\cmd\sing-box
     if ($LASTEXITCODE -ne 0) { throw "sing-box core build failed" }
 } finally {
+    if ($null -eq $previousGoos) { Remove-Item Env:GOOS -ErrorAction SilentlyContinue } else { $env:GOOS = $previousGoos }
+    if ($null -eq $previousGoarch) { Remove-Item Env:GOARCH -ErrorAction SilentlyContinue } else { $env:GOARCH = $previousGoarch }
+    if ($null -eq $previousCgo) { Remove-Item Env:CGO_ENABLED -ErrorAction SilentlyContinue } else { $env:CGO_ENABLED = $previousCgo }
     Pop-Location
 }
 
 Push-Location $WindowsClient
 try {
-    dotnet publish -c Release -r win-x64 --self-contained true -o $Staging
+    dotnet publish -c Release -r win-x64 --self-contained true -p:EnableWindowsTargeting=true -o $Staging
     if ($LASTEXITCODE -ne 0) { throw "Windows client publish failed" }
 } finally {
     Pop-Location
