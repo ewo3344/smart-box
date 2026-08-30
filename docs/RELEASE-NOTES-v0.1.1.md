@@ -101,6 +101,6 @@ Windows 支持计划在具备真机验证条件后于后续版本提供。
 
 - Linux (x86_64): `smart-box-0.1.1-linux-x86_64.tar.gz`
 - Android (arm64): `smart-box-0.1.1-android-arm64.apk`
-- `SHA256SUMS`
+- `SHA256SUMS-v0.1.1-release`（仅含上述两个产物；仓库 `dist/SHA256SUMS` 是完整构建目录清单，含未发布的 Windows 产物）
 
 完整变更日志见仓库 `CHANGELOG.md`。
