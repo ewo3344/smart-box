@@ -71,14 +71,17 @@
 # 备份配置（可选）
 cp -r ~/.config/smart-box ~/.config/smart-box.backup
 
-# 安装新版本（会覆盖 /usr/local/lib/smart-box/）
+# 安装新版本（以桌面用户身份运行，不要加 sudo）
+# install.sh 会自行通过 pkexec 提权；用 sudo 运行会被拒绝
 tar xzf smart-box-0.1.1-linux-x86_64.tar.gz
 cd smart-box-0.1.1-linux-x86_64
-sudo ./install.sh
+./install.sh
 
-# 重启服务
-sudo systemctl restart smart-box@$USER
+# 重启服务（同样以桌面用户身份）
+systemctl restart "smart-box@$(id -un)"
 ```
+
+前置依赖：`/usr/bin/python3` 可 `import PySide6`，且系统提供 `pkexec`。缺任一项安装会中止并提示原因。
 
 **Android**:
 
