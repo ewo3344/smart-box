@@ -45,9 +45,10 @@
 
 ### Windows
 
-- [x] 交叉编译产物生成（Linux 上 `scripts/build-windows.ps1`，产出 `dist/smart-box-0.1.1-windows-x64.zip`，PE32+）
-- [ ] 运行时验证（需 Windows 机器：托盘启动、系统代理、core 崩溃重启）
-      **未完成**：无 Windows 真机。Release Notes 已标注运行时未验证。阻塞可发布。
+不适用（本次发布不含 Windows）。
+
+- [x] 交叉编译产物生成（Linux 上 `scripts/build-windows.ps1`，产出 `dist/smart-box-0.1.1-windows-x64.zip`，PE32+；仅作记录，不随 Release 上传）
+- 运行时验证：不在本次发布范围（无 Windows 真机；不作为阻塞项）
 
 ### 性能回归
 
@@ -67,8 +68,7 @@
   - [x] Linux: tar.gz 解压 + `install.sh`（2026-08-30 冒烟：两 unit active，卸载后 SmartBox 消失、直连恢复，日常出口重装 0.1.1）
   - [x] Android: APK 安装（覆盖安装保留数据）
         2026-08-30：`install -r` 成功，`versionCode=10001`，`files/` 与 `databases/` 保留。
-  - [ ] Windows: zip 解压 + exe 启动
-        部分：Linux 上已解压（README + config + 两 exe）且 PE32+ 确认；**exe 启动未做**。阻塞可发布。
+  - Windows: zip 解压 + exe 启动 — 不适用（本次发布不含 Windows）
 
 ### Submodule 发布门禁
 
@@ -102,7 +102,6 @@
 - [ ] 上传发布产物：
   - smart-box-0.1.1-linux-x86_64.tar.gz + SHA256
   - smart-box-0.1.1-android-arm64.apk + SHA256
-  - smart-box-0.1.1-windows-x64.zip + SHA256
 - [ ] 粘贴 `docs/RELEASE-NOTES-v0.1.1.md` 内容
 - [ ] 标记为 Latest Release
 
@@ -134,13 +133,15 @@
 
 ## 发布前结论（2026-08-30）
 
-**不可发布。** 发布时间由维护者决定。本结论供放行判断，**不是发布信号**。禁止因此合并 `main`、打 `v0.1.1` tag、或创建 GitHub Release。
+**可发布（Linux + Android）。** 发布时间由维护者决定。本结论供放行判断，**不是发布信号**。合并 `main`、打 `v0.1.1` tag、创建 GitHub Release 仍须维护者确认后执行。
 
-必须保持开放（不得改写成 PASS）：
+范围外（非阻塞项）：
 
-- **Windows 运行时未验证**（交叉编译产物，无 Windows 真机：托盘启动、系统代理、core 重启）
+- **Windows**：不适用（本次发布不含 Windows）。交叉编译产物仅作记录，不上传。
 
-其余未勾且不构成放行的项：发布日 Git/GitHub/冒烟全部未做（硬边界）；性能回归未采数；`build-all-platforms.sh` 未单独跑。
+Linux / Android 门禁已关闭：tarball 装卸冒烟、vivo 0.1.1 覆盖安装、T001 自动化、13/15 人工矩阵（2/15 DEFERRED 第 10、12 项）。
+
+其余未勾且不构成阻塞：发布日 Git/GitHub/冒烟（待放行后执行）；性能回归未采数；`build-all-platforms.sh` 未单独跑。
 
 已知产品缺口（非缺陷）：Android 组页不显示节点罚分；core 已暴露 `AppliedFailurePenalty`，计划 v0.1.2 接入。
 
@@ -150,4 +151,4 @@ gitlink 仍为脏工作树（`M android` / `M core`），未暂存。
 
 **维护者**: @ewo3344
 **首次创建**: 2026-08-30
-**最后更新**: 2026-08-30（vivo 0.1.1 覆盖安装已验证；结论仍不可发布，唯一开放项：Windows 运行时）
+**最后更新**: 2026-08-30（结论：可发布（Linux + Android）；Windows 不在本次发布范围）

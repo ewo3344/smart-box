@@ -12,7 +12,7 @@
 
 - **Android T001 完整设备矩阵**：自动化脚本 `scripts/android-full-matrix.sh` 实现 START/STOP 生命周期验证，人工矩阵覆盖 15 项功能场景（13/15 PASS，2/15 DEFERRED 第 10、12 项，0 FAIL）
 - **树莓派健康检查**：`scripts/verify-raspberry-pi.sh` 实现只读 SSH 健康检查，覆盖服务状态、route-bypass 规则、profile/cache 完整性
-- **Windows 验证脚本**：`scripts/verify-windows.ps1` 完成环境门禁框架。zip 已在 Linux 上交叉编译（PE32+），运行时托盘/系统代理/core 重启仍需 Windows 真机
+- **Windows 验证脚本**：`scripts/verify-windows.ps1` 完成环境门禁框架。zip 已在 Linux 上交叉编译（PE32+），本轮不随发布提供
 - **Submodule 发布门禁**：`scripts/publish-submodules.sh --check` 实现 fail-closed 检查，防止 gitlink 指向不含产品代码的 commit
 
 ### 工具链收敛
@@ -46,11 +46,11 @@
 | **Converter** | PASS | Go 测试（含 `-race`）全部通过 |
 | **Submodule** | PASS | gitlink 在 fork 远端可达且含 smart 代码 |
 
-### 待完成验证
+### 不在本次发布范围
 
 | 平台 | 状态 | 原因 |
 |------|------|------|
-| **Windows 运行时** | 未验证 | 包已构建（Linux 交叉编译，PE32+ 验证通过），尚未在 Windows 上验证托盘启动、系统代理与 core 重启 |
+| **Windows** | 不在本次发布范围 | 交叉编译产物 PE32+ 已验证，尚未在 Windows 真机上验证托盘启动、系统代理与 core 重启 |
 
 ---
 
@@ -84,19 +84,23 @@ sudo systemctl restart smart-box@$USER
 
 - 直接安装 APK（覆盖安装会保留数据和设置）
 
-**Windows**:
+---
 
-- 解压新版本 zip，覆盖旧版本目录
+## 平台范围
+
+v0.1.1 发布 Linux 与 Android。Windows 客户端本轮不随发布提供：
+交叉编译产物（PE32+ 已验证）尚未在 Windows 真机上验证托盘启动、
+系统代理切换与 core 崩溃重启，因此不作为支持平台发布。
+Windows 支持计划在具备真机验证条件后于后续版本提供。
 
 ---
 
 ## 下载
 
-产物在 GitHub Release `v0.1.1`（发布日上传）：
+产物在 GitHub Release `v0.1.1`（发布时间由维护者决定后上传）：
 
 - Linux (x86_64): `smart-box-0.1.1-linux-x86_64.tar.gz`
 - Android (arm64): `smart-box-0.1.1-android-arm64.apk`
-- Windows (x64): `smart-box-0.1.1-windows-x64.zip`
 - `SHA256SUMS`
 
 完整变更日志见仓库 `CHANGELOG.md`。
