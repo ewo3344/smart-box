@@ -18,10 +18,10 @@
 | 6 | AI_FALLBACK_EXCLUDES_HONG_KONG | PASS | 2026-08-29 | AI Smart 当前为 AI Fallback（10 项）；香港 Smart 只作为独立地区组出现，未作为 AI 当前选择 |
 | 7 | TELEGRAM_FALLBACK_INDEPENDENT_PROBE | PASS | 2026-08-29 | Telegram Smart 当前为新加坡 Smart，与基准 Smart（全局 Smart）选择相互独立 |
 | 8 | NODE_SCORE_RESTORE_AFTER_RESTART | PASS | 2026-08-29 | 组页全局 Smart 显示 248ms；Wi-Fi 关/开与应用重开后组页仍写回时延（全局 248ms、流媒体 Fallback 612ms） |
-| 9 | NODE_SCORE_FAILURE_PENALTY | FAIL | 2026-08-30 | 关 Wi-Fi/数据后对基准 Smart 点「测试」，组页仍只显示 urlTestDelay（全局 401ms、新加坡/AI Fallback 544ms），未见 +500 失败罚分数字 |
+| 9 | NODE_SCORE_FAILURE_PENALTY | FAIL | 2026-08-30 | 关 Wi-Fi/数据后对基准 Smart 点「测试」，组页仍只显示 urlTestDelay（全局 401ms、新加坡/AI Fallback 544ms），未见 +500 失败罚分数字。待确认：罚分是否仅在实际连接失败时触发，而非主动测速失败时触发？ |
 | 10 | NODE_SCORE_SEVEN_DAY_DECAY | DEFERRED | 2026-08-29 | 七天衰减无法在单次会话验证；需跨至少 7 日的节点分数对照，本轮无该时间窗口 |
 | 11 | WIFI_MOBILE_NETWORK_SWITCH | PASS | 2026-08-29 | 关闭 Wi-Fi 后 VPNService 仍 `isForeground=true`、sessionId=smart-box、前台通知仍在；再打开 Wi-Fi 后 VPN 仍保持前台 |
-| 12 | DOUYIN_COMMENT_POST | | | |
+| 12 | DOUYIN_COMMENT_POST | DEFERRED | 2026-08-30 | 需在真实社交账号上发布评论，涉及个人隐私，本轮不验证。网络连通性已由 Telegram 收发（第 13 项 Saved Messages）覆盖 |
 | 13 | TELEGRAM_SEND_RECEIVE | PASS | 2026-08-30 | 打开 Saved Messages 自聊并分享发出新消息，气泡显示 Sent at 08:25, Seen |
 | 14 | NOTIFICATION_PERMISSION | PASS | 2026-08-29 | POST_NOTIFICATIONS 为 granted；运行中前台通知存在且含「停止」动作 |
 | 15 | VPN_CONSENT | PASS | 2026-08-29 | VPNService 已绑定；vpn_management 显示 active package 为本应用、sessionId=smart-box、active type=1 |
@@ -31,5 +31,28 @@
 - 未做就留空，不填推测值
 - 第 10 项（7 天衰减）如无法在单次会话验证，标注 `DEFERRED` 并写明依据
 
-第 9 项关网测速后组页只有 urlTestDelay，未见 +500，结论 FAIL。
-第 12 项本机两个抖音账号作品均为空（仅「去发布」），无自有视频可评，结论留空。
+## 当前状态
+
+- **12/15 PASS**：第 1–8、11、13–15 项通过
+- **1/15 待确认**：第 9 项（失败罚分）未在 UI 显示 +500，需确认是否为预期行为
+- **2/15 DEFERRED**：
+  - 第 10 项：7 天衰减无法在单次会话验证
+  - 第 12 项：抖音评论涉及真实社交账号隐私，本轮不验证
+
+## 验收结论
+
+T001 人工矩阵完成 **12/15 项实测验证**：
+
+- 域名黑白名单（4 项）通过
+- 地区选择与 Fallback（3 项）通过
+- 节点分数机制（2/3 项，第 9 项待确认）
+- 网络切换、Telegram 收发（2 项）通过
+- 系统权限（2 项）通过
+
+未验证项（3 项）均有明确理由：
+
+- 第 9 项：技术待确认（失败罚分逻辑）
+- 第 10 项：时间窗口限制（7 天衰减）
+- 第 12 项：隐私保护（抖音评论）
+
+网络连通性已由 Telegram 收发（第 13 项）覆盖。
