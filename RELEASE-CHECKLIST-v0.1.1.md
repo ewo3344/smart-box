@@ -8,11 +8,11 @@
 
 ## 准备阶段（Release - 7 days）
 
-- [ ] 创建 release 分支: `git checkout -b release/v0.1.1`
-- [ ] 更新版本号: `./scripts/version-manager.sh bump 0.1.1 --yes`
-- [ ] 验证版本一致性: `./scripts/version-manager.sh check`
-- [ ] 更新 CHANGELOG.md（将 `[未发布]` 改为 `[0.1.1] - 2026-09-12`）
-- [ ] 冻结新功能（仅接受 bugfix）
+- [x] 创建 release 分支: `git checkout -b release/v0.1.1`
+- [x] 更新版本号: `./scripts/version-manager.sh bump 0.1.1 --yes`
+- [x] 验证版本一致性: `./scripts/version-manager.sh check`
+- [x] 更新 CHANGELOG.md（将 `[未发布]` 改为 `[0.1.1] - 2026-09-12`）
+- [x] 冻结新功能（仅接受 bugfix）
 
 ---
 
@@ -20,63 +20,69 @@
 
 ### Linux
 
-- [ ] `scripts/verify-release.sh --allow-live`
-- [ ] Linux 单元测试全部通过
-- [ ] 发布清单 checksum 验证通过
+- [x] `scripts/verify-release.sh --allow-live`
+- [x] Linux 单元测试全部通过
+- [x] 发布清单 checksum 验证通过
 
 ### Converter
 
-- [ ] `cd converter && env GOTOOLCHAIN=go1.26.5 go test ./...`
-- [ ] `env GOTOOLCHAIN=go1.26.5 go test -race ./...`
+- [x] `cd converter && env GOTOOLCHAIN=go1.26.5 go test ./...`
+- [x] `env GOTOOLCHAIN=go1.26.5 go test -race ./...`
 
 ### Android
 
 - [ ] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`
   - 验收标准：`START=PASS STOP=PASS FAILURES=0 BLOCKED_COUNT=0`
   - `RESULT=MANUAL_REQUIRED` + `exit 2` 为预期（15 项人工计数）
-- [ ] `docs/MANUAL-MATRIX-T001.md` 签核完成（12/15 PASS，3/15 DEFERRED）
+  - 未完成：0.1.0 已跑通；**0.1.1 未在 vivo 覆盖安装**（无授权，不重跑）。阻塞可发布。
+- [x] `docs/MANUAL-MATRIX-T001.md` 签核完成（12/15 PASS，1/15 FAIL 第 9 项，2/15 DEFERRED 第 10、12 项）
 
 ### 树莓派
 
-- [ ] `scripts/verify-raspberry-pi.sh --host smart-box-pi --out verification/pi-health-<timestamp>`
-- [ ] converter/core 服务 active
-- [ ] Route-bypass 规则生效
+- [x] `scripts/verify-raspberry-pi.sh --host smart-box-pi --out verification/pi-health-<timestamp>`
+- [x] converter/core 服务 active
+- [x] Route-bypass 规则生效
 
 ### Windows
 
 - [x] 交叉编译产物生成（Linux 上 `scripts/build-windows.ps1`，产出 `dist/smart-box-0.1.1-windows-x64.zip`，PE32+）
 - [ ] 运行时验证（需 Windows 机器：托盘启动、系统代理、core 崩溃重启）
-      未完成时 Release Notes 必须标注 Windows 运行时未验证
+      **未完成**：无 Windows 真机。Release Notes 已标注运行时未验证。阻塞可发布。
 
 ### 性能回归
 
 - [ ] 对比 v0.1.0：启动时间 / 内存占用 / 连接建立延迟
+      未完成：本轮无对比数据。非本 patch 硬阻塞，但不构成可发布。
 - [ ] 无明显回归（±10% 以内）
+      同上。
 
 ---
 
 ## 构建阶段（Release - 3 days）
 
 - [ ] `scripts/build-all-platforms.sh`
-- [ ] 生成 SHA256SUMS
+      未完成：本分支未单独执行；Linux 单测已由 `verify-release.sh` 覆盖。非阻塞。
+- [x] 生成 SHA256SUMS
 - [ ] 验证所有产物可安装：
-  - [ ] Linux: tar.gz 解压 + `install.sh`
+  - [x] Linux: tar.gz 解压 + `install.sh`（2026-08-30 冒烟：两 unit active，卸载后 SmartBox 消失、直连恢复，日常出口重装 0.1.1）
   - [ ] Android: APK 安装（覆盖安装保留数据）
+        **未完成**：0.1.1 未在 vivo 覆盖安装（无授权）。阻塞可发布。
   - [ ] Windows: zip 解压 + exe 启动
+        部分：Linux 上已解压（README + config + 两 exe）且 PE32+ 确认；**exe 启动未做**。阻塞可发布。
 
 ### Submodule 发布门禁
 
-- [ ] `scripts/publish-submodules.sh --check`
-- [ ] 输出 `CHECK PASS`（gitlink 在 fork 远端可达且含 smart 代码）
+- [x] `scripts/publish-submodules.sh --check`
+- [x] 输出 `CHECK PASS`（gitlink 在 fork 远端可达且含 smart 代码）
 
 ---
 
 ## 文档阶段（Release - 2 days）
 
-- [ ] 更新 README.md（如有变更）
-- [ ] 编写 `docs/RELEASE-NOTES-v0.1.1.md`
-- [ ] 更新版本兼容性说明（如有新依赖或平台要求变化）
-- [ ] 确认 `docs/MANUAL-MATRIX-T001.md` 无订阅 URL、Token、账号、私密路径
+- [x] 更新 README.md（如有变更）（本 patch 无需改产品 README）
+- [x] 编写 `docs/RELEASE-NOTES-v0.1.1.md`
+- [x] 更新版本兼容性说明（如有新依赖或平台要求变化）（`docs/DEVICE-MATRIX.md`）
+- [x] 确认 `docs/MANUAL-MATRIX-T001.md` 无订阅 URL、Token、账号、私密路径
 
 ---
 
@@ -126,6 +132,23 @@
 
 ---
 
+## 发布前结论（2026-08-30）
+
+**不可发布。** 目标日 2026-09-12，距今约 13 天。本结论供放行判断，**不是发布信号**。禁止因此合并 `main`、打 `v0.1.1` tag、或创建 GitHub Release。
+
+必须保持开放（不得改写成 PASS）：
+
+- **Windows 运行时未验证**（交叉编译产物，无 Windows 真机：托盘启动、系统代理、core 重启）
+- **Android 0.1.1 未在 vivo 覆盖安装验证**（无授权，不重跑 `android-full-matrix`）
+
+其余未勾且不构成放行的项：发布日 Git/GitHub/冒烟全部未做（硬边界）；性能回归未采数；`build-all-platforms.sh` 未单独跑。
+
+已知缺陷（不改写为 PASS）：T001 第 9 项 FAIL（手动 urlTest 写 `failures`，组页不显示 +500；计划 v0.1.2）。
+
+gitlink 仍为脏工作树（`M android` / `M core`），未暂存。
+
+---
+
 **维护者**: @ewo3344
 **首次创建**: 2026-08-30
-**最后更新**: 发布日填写
+**最后更新**: 2026-08-30（Q6 对账，结论：不可发布）
