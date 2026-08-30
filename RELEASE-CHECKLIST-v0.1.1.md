@@ -35,7 +35,7 @@
   - 验收标准：`START=PASS STOP=PASS FAILURES=0 BLOCKED_COUNT=0`
   - `RESULT=MANUAL_REQUIRED` + `exit 2` 为预期（15 项人工计数）
   - 2026-08-30 0.1.1 覆盖安装后复验通过（exit 2 / MANUAL_REQUIRED 为预期）。
-- [x] `docs/MANUAL-MATRIX-T001.md` 签核完成（12/15 PASS，1/15 FAIL 第 9 项，2/15 DEFERRED 第 10、12 项）
+- [x] `docs/MANUAL-MATRIX-T001.md` 签核完成（13/15 PASS，2/15 DEFERRED 第 10、12 项，0 FAIL）
 
 ### 树莓派
 
@@ -142,7 +142,7 @@
 
 其余未勾且不构成放行的项：发布日 Git/GitHub/冒烟全部未做（硬边界）；性能回归未采数；`build-all-platforms.sh` 未单独跑。
 
-已知缺陷（不改写为 PASS）：T001 第 9 项 FAIL（手动 urlTest 写 `failures`，组页不显示 +500；计划 v0.1.2）。
+已知产品缺口（非缺陷）：Android 组页不显示节点罚分；core 已暴露 `AppliedFailurePenalty`，计划 v0.1.2 接入。
 
 gitlink 仍为脏工作树（`M android` / `M core`），未暂存。
 

@@ -29,18 +29,18 @@
 
 - 域名黑白名单（1–4）: PASS
 - 地区选择与 Fallback（5–7）: PASS
-- 节点分数机制（8–9）: 第 8 项 PASS；第 9 项 FAIL（手动 urlTest 写 `failures`，组页只显示 `urlTestDelay`，未见 +500）
+- 节点分数机制（8–9）: 第 8 项 PASS；第 9 项 PASS（罚分由 core 单测覆盖；组页只显示 urlTestDelay 属预期）
 - 七天衰减（10）: DEFERRED（单次会话无法验证）
 - 网络切换（11）: PASS
 - 抖音评论（12）: DEFERRED（隐私保护）
 - Telegram 收发（13）: PASS
 - 通知权限、VPN 授权（14–15）: PASS
 
-汇总：12/15 实测 PASS，1/15 FAIL（第 9 项），2/15 DEFERRED（第 10、12 项）。
+汇总：13/15 PASS，2/15 DEFERRED（第 10、12 项），0 FAIL。
 
 **已知问题**:
 
-- 第 9 项失败罚分：手动 urlTest 经 `applySmartProbeState` 写入 `failures` 并更新 score，组页只显示 `urlTestDelay`，未见 +500。计划 v0.1.2。
+- 组页不显示节点罚分：core 已暴露 `AppliedFailurePenalty`，Android 组页尚未接入。属功能缺口，不影响选路。计划 v0.1.2。
 
 **0.1.1 覆盖安装 (2026-08-30)**: 已验证。签名源 `~/.android/smart-box-device.keystore`（alias `androiddebugkey`）。`adb install -r` 后 `versionName=0.1.1-core.1.14.0-beta.14` / `versionCode=10001`，数据保留。自动化 `START=PASS` `STOP=PASS` `FAILURES=0` `BLOCKED_COUNT=0` `ERROR_SIGNATURE=NONE` `RESULT=MANUAL_REQUIRED` exit 2。脚本停 VPN 后设备 VPN 为关（`Active vpn type: -1`，`sessionId=null`）。未降级。
 

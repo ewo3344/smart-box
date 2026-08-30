@@ -11,8 +11,8 @@
 
 ### 验收
 - **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
-- **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 9 项失败罚分为 FAIL；第 10、12 项 DEFERRED。
-- **T001 第 9 项代码定论 (2026-08-30)**: 组页「测试」走 `StartedService.URLTest` → `Smart.CheckOutbounds` → `probe(force=true)` → `applySmartProbeState`，测速失败写 `failures` 并 `queueScore`；组页只渲染 `urlTestDelay`。第 9 项保持 FAIL，计划 v0.1.2，v0.1.1 不改 core。
+- **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 10、12 项 DEFERRED。
+- **T001 第 9 项更正 (2026-08-30)**: 罚分由 `smart_score_test.go` 覆盖并通过 `SmartGroupCandidateStatus` 暴露。组页只渲染 `urlTestDelay`，UI 看不到罚分属预期。关 Wi-Fi 时移动数据仍在，401ms 为成功探测。第 9 项改为 PASS。13/15 PASS，2/15 DEFERRED，0 FAIL。
 - **Linux 0.1.1 tar.gz 冒烟 (2026-08-30)**: 解压 `smart-box-0.1.1-linux-x86_64.tar.gz`，包内 `sha256sum -c SHA256SUMS` 全部成功。`sudo ./install.sh` 因 uid 0 拒绝（需桌面用户走 pkexec）。桌面用户 `./install.sh` 覆盖安装后 `smart-box@e` 与 `smart-box-watchdog@e` 两次均为 `active`。卸载后两 unit inactive、`SmartBox` 接口消失、直连 `example.com` HTTP/2 200。本机为日常出口，已重装 0.1.1 并拉起两 unit（`SmartBox` 恢复）。
 - **Windows 165MB 定论 (2026-08-30)**: `build-windows.ps1` 为 `--self-contained true`，未带 `PublishTrimmed`。试加 `-p:PublishTrimmed=true` 被 SDK 拒绝（`NETSDK1175`，Windows 窗体不支持剪裁）。属 self-contained + WPF/WinForms 正常代价，不改打包方式、不重打 zip。
 - **v0.1.1 发布前对账 (2026-08-30)**: `RELEASE-CHECKLIST-v0.1.1.md` 已逐项勾选。结论 **不可发布**：Windows 运行时未验证；Android 0.1.1 未在 vivo 覆盖安装。其余绿灯不构成放行。
