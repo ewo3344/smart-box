@@ -18,7 +18,7 @@
 | 6 | AI_FALLBACK_EXCLUDES_HONG_KONG | PASS | 2026-08-29 | AI Smart 当前为 AI Fallback（10 项）；香港 Smart 只作为独立地区组出现，未作为 AI 当前选择 |
 | 7 | TELEGRAM_FALLBACK_INDEPENDENT_PROBE | PASS | 2026-08-29 | Telegram Smart 当前为新加坡 Smart，与基准 Smart（全局 Smart）选择相互独立 |
 | 8 | NODE_SCORE_RESTORE_AFTER_RESTART | PASS | 2026-08-29 | 组页全局 Smart 显示 248ms；Wi-Fi 关/开与应用重开后组页仍写回时延（全局 248ms、流媒体 Fallback 612ms） |
-| 9 | NODE_SCORE_FAILURE_PENALTY | | 2026-08-29 | 关 Wi-Fi/数据后对全局 Smart 节点测速，logcat 出现 unavailable: context deadline exceeded，组页 Smart 时延数字消失（DIRECT 仍 227ms）；组页 Score 为 urlTestDelay，未见 +500 失败罚分 |
+| 9 | NODE_SCORE_FAILURE_PENALTY | FAIL | 2026-08-30 | 关 Wi-Fi/数据后对基准 Smart 点「测试」，组页仍只显示 urlTestDelay（全局 401ms、新加坡/AI Fallback 544ms），未见 +500 失败罚分数字 |
 | 10 | NODE_SCORE_SEVEN_DAY_DECAY | DEFERRED | 2026-08-29 | 七天衰减无法在单次会话验证；需跨至少 7 日的节点分数对照，本轮无该时间窗口 |
 | 11 | WIFI_MOBILE_NETWORK_SWITCH | PASS | 2026-08-29 | 关闭 Wi-Fi 后 VPNService 仍 `isForeground=true`、sessionId=smart-box、前台通知仍在；再打开 Wi-Fi 后 VPN 仍保持前台 |
 | 12 | DOUYIN_COMMENT_POST | | | |
@@ -31,5 +31,5 @@
 - 未做就留空，不填推测值
 - 第 10 项（7 天衰减）如无法在单次会话验证，标注 `DEFERRED` 并写明依据
 
-第 9 项本轮打挂后未见 +500 失败罚分数字，结论留空。
-第 12 项未在本轮观察到评论条数变化，结论留空。
+第 9 项关网测速后组页只有 urlTestDelay，未见 +500，结论 FAIL。
+第 12 项本机两个抖音账号作品均为空（仅「去发布」），无自有视频可评，结论留空。
