@@ -217,6 +217,50 @@ class PublishSubmodulesCheckTest(unittest.TestCase):
         self.assertIn("lacks protocol/group/smart.go", output)
         self.assertNotIn("CHECK PASS", output)
 
+    def test_rejects_android_without_smartbox_identity(self) -> None:
+        core_src = self._init_repo("core-smart-src")
+        android_src = self._init_repo("android-bare-src")
+        core_sha = self._smart_core_commit(core_src)
+        android_sha = self._bare_android_commit(android_src)
+        core_remote = self.root / "core-smart.git"
+        android_remote = self.root / "android-bare.git"
+        make_bare_remote(core_src, core_remote)
+        make_bare_remote(android_src, android_remote)
+        super_repo = self._superproject(
+            core_sha, android_sha, [core_remote, android_remote]
+        )
+
+        result = self._check(
+            super_repo, core_remote, android_remote, core_sha, android_sha
+        )
+        output = result.stdout + result.stderr
+        self.assertNotEqual(result.returncode, 0, output)
+        self.assertIn("lacks Android smart-box identity", output)
+        self.assertNotIn("CHECK PASS", output)
+
+    def test_accepts_fork_reachable_smart_snapshots(self) -> None:
+        core_src = self._init_repo("core-smart-src")
+        android_src = self._init_repo("android-smart-src")
+        core_sha = self._smart_core_commit(core_src)
+        android_sha = self._smart_android_commit(android_src)
+        core_remote = self.root / "core-smart.git"
+        android_remote = self.root / "android-smart.git"
+        make_bare_remote(core_src, core_remote)
+        make_bare_remote(android_src, android_remote)
+        super_repo = self._superproject(
+            core_sha, android_sha, [core_remote, android_remote]
+        )
+
+        result = self._check(
+            super_repo, core_remote, android_remote, core_sha, android_sha
+        )
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        self.assertIn("CHECK PASS", output)
+        staged = git(super_repo, "diff", "--cached", "--name-only").stdout
+        self.assertNotIn("core", staged.splitlines())
+        self.assertNotIn("android", staged.splitlines())
+
     def test_setup_remotes_adds_publish_without_staging_gitlinks(self) -> None:
         super_repo = self._init_repo("super-setup")
         core_wt = super_repo / "core"
