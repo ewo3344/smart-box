@@ -1,6 +1,6 @@
 # smart-box v0.1.1 Release Notes
 
-**发布日期**: 发布时间由维护者决定
+**发布日期**: 2026-08-30
 **类型**: Patch Release
 **主题**: 测试覆盖和稳定性收敛
 
@@ -100,7 +100,7 @@ Windows 支持计划在具备真机验证条件后于后续版本提供。
 
 ## 下载
 
-产物在 GitHub Release `v0.1.1`（发布时间由维护者决定后上传）：
+产物已上传至 GitHub Release `v0.1.1`：
 
 - Linux (x86_64): `smart-box-0.1.1-linux-x86_64.tar.gz`
 - Android (arm64): `smart-box-0.1.1-android-arm64.apk`

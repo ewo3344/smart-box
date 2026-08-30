@@ -57,7 +57,7 @@ credentials into the cache key.
 The client has its own release line. The current identity is:
 
 ```text
-smart-box 0.1.0
+smart-box 0.1.1
 based on sing-box 1.14.0-beta.14
 ```
 
@@ -82,7 +82,7 @@ The native Linux x86_64 release is built from `linux/`:
 
 ```bash
 ./linux/build-package.sh
-cd dist/smart-box-0.1.0-linux-x86_64
+cd dist/smart-box-0.1.1-linux-x86_64
 ./install.sh
 smart-box
 ```
@@ -109,8 +109,8 @@ details.
 The release artifacts are:
 
 ```text
-dist/smart-box-0.1.0-linux-x86_64/
-dist/smart-box-0.1.0-linux-x86_64.tar.gz
+dist/smart-box-0.1.1-linux-x86_64/
+dist/smart-box-0.1.1-linux-x86_64.tar.gz
 ```
 
 ### Windows desktop client
@@ -118,12 +118,17 @@ dist/smart-box-0.1.0-linux-x86_64.tar.gz
 Windows desktop client and bundled core:
 
 ```powershell
-C:\workspace\smart-box\scripts\build-windows.ps1
+scripts/build-windows.ps1
 ```
 
-The published client is
-`dist\smart-box-0.1.0-core-1.14.0-beta.14-windows-x64\smart-box.exe`.
-It stores its single converter URL and validated profile under
+The build produces
+`dist\smart-box-0.1.1-core-1.14.0-beta.14-windows-x64\smart-box.exe`.
+**Windows is not part of the 0.1.1 release**: the binaries cross-compile from
+Linux and verify as PE32+, but have never been run on Windows hardware, so tray
+startup, system proxy switching, and core restart are unverified. See
+`ROADMAP.md`.
+
+The client stores its single converter URL and validated profile under
 `%LOCALAPPDATA%\smart-box`, runs in the notification area, controls the
 bundled Smart core, and can switch the Windows system proxy at
 `127.0.0.1:20808`. Existing settings and profiles are copied once from
@@ -136,7 +141,7 @@ $env:GOTOOLCHAIN = (Get-Content ..\TOOLCHAIN_VERSION -Raw).Trim()
 go run .\cmd\sing-box schema -o .\docs\schema.json
 ```
 
-The Android project is in `C:\workspace\smart-box\android`. It uses the upstream
+The Android project is in `android/`. It uses the upstream
 Gradle wrapper and expects Android SDK 37.1 and NDK `28.0.13004108`.
 
 ## Android runtime compatibility
@@ -151,7 +156,7 @@ exhaustion and the separate Linux TUN forwarding failure without changing the
 shared subscription.
 
 The refreshed arm64 build is
-`dist/smart-box-0.1.0-core-1.14.0-beta.14-android-arm64.apk`. Verify any
+`dist/smart-box-0.1.1-core-1.14.0-beta.14-android-arm64.apk`. Verify any
 downloaded artifact with `sha256sum` and the release checksum file. It targets
 `io.nekohasekai.sfa.smartbox`, but its default debug certificate is not
 guaranteed to match an existing installation. For a device-signed build,
@@ -166,8 +171,9 @@ The resulting device-signed copy can update an installation when its
 certificate matches. The repository does not contain a keystore or passwords.
 
 Use the resulting signed APK to update an existing installation when its
-certificate matches. Android 5/6 devices use
-`dist/smart-box-0.1.0-core-1.14.0-beta.14-legacy-android-5-arm64.apk`.
+certificate matches. A legacy variant for Android 5/6 was produced for 0.1.0
+(`dist/smart-box-0.1.0-core-1.14.0-beta.14-legacy-android-5-arm64.apk`); it has
+not been rebuilt for 0.1.1.
 
 ## Scope and limitations
 
@@ -225,3 +231,23 @@ name `smart-box`. It can be installed alongside the official application
 without sharing its app data. Remote-profile and file-import intent filters are
 not registered. The Windows client uses separate process names and a separate
 local data directory.
+
+## Documentation
+
+| File | Contents |
+| --- | --- |
+| `CHANGELOG.md` | Release history and per-release verification results |
+| `ROADMAP.md` | Outstanding work, including what blocks the next release |
+| `VERSION-CONTROL.md` | Version scheme, branch model, release procedure |
+| `QUICK-REFERENCE.md` | Day-to-day commands, paths, troubleshooting |
+| `SMART-BOX-PLAN.md` | Engineering ledger: what each verified behaviour asserts |
+| `UPSTREAMS.md` | GPL attribution, import baselines, submodule publish rules |
+| `docs/DESIGN-NOTES.md` | Why the key trade-offs were made; debt and limitations |
+| `docs/DEVICE-MATRIX.md` | Android device compatibility and test methodology |
+| `docs/MANUAL-MATRIX-T001.md` | Signed-off manual verification matrix |
+| `docs/RELEASE-NOTES-v0.1.1.md` | 0.1.1 release announcement |
+| `linux/README.md`, `converter/README.md`, `converter/ROUTING.md` | Component guides |
+
+Before changing routing, TUN stack, or Smart scoring, read
+`docs/DESIGN-NOTES.md` first — it records the failures that produced the current
+design.

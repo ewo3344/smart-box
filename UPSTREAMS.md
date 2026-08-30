@@ -46,12 +46,22 @@ tree is not the published pointer.
 
 Publish in one direction only:
 
-1. 工作树 — keep smart-box changes in the local `core/` and `android/` checkouts.
-2. 快照 — create a commit on the fork history that contains those changes.
-3. push fork — `git push` that snapshot to `ewo3344/smart-box-core` or
+1. Worktree — keep smart-box changes in the local `core/` and `android/` checkouts.
+2. Snapshot — create a commit on the fork history that contains those changes.
+3. Push fork — `git push` that snapshot to `ewo3344/smart-box-core` or
    `ewo3344/smart-box-android` so the commit is reachable as a ref.
-4. 更新 gitlink — only after `scripts/publish-submodules.sh --check` passes,
+4. Move gitlink — only after `scripts/publish-submodules.sh --check` passes,
    move the superproject gitlink to that fork snapshot.
+
+Steps 2 and 3 are manual. The script provides `--check` and `--setup-remotes`
+only; there is no `--publish` mode that snapshots and pushes for you.
+
+Why step 4 needs the check: the published fork snapshots and the daily
+SagerNet-based worktrees share no common ancestor, and the upstream commits
+contain none of the smart-box code (`git ls-tree <upstream> -- protocol/group/`
+lists no `smart.go`). A careless `git add` therefore does not produce a partial
+update — it points the public repository at a tree with no product code, and at
+a commit the fork remotes cannot serve, which breaks `clone --recursive`.
 
 Daily worktrees may still have `origin` on SagerNet. Add a separate `publish`
 remote that points at the forks (local git config only; does not move gitlinks):

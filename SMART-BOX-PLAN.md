@@ -1,6 +1,6 @@
 # smart-box 完整可用计划
 
-更新时间：2026-08-24
+更新时间：2026-08-30
 
 这份计划是项目当前的验收入口。它把源码测试、真实核心、桌面运行、Android
 设备和树莓派服务分开记录；设备日志、运行时配置和交接材料不随公开源码发布。
@@ -154,9 +154,12 @@
 - [x] 仪表盘运行中 profile refresh 已有完成回执、三态反馈和有界重启；以强制
   1 字节差异验证远端内容恢复和成功提示。reload 分支保持同一 VPN NetworkAgent，
   模式重建分支会替换 NetworkAgent，因此不笼统声称所有刷新都不掉 VPN。
-- [ ] 仍待设备矩阵：黑白名单、地区/Fallback、节点分数恢复，以及手动停止按钮
-  热区；本轮没有声称完整评论发布或媒体流测试。
-- [ ] 记录启动/停止、网络切换、进程重启和崩溃恢复的 logcat 结果。
+- [x] 设备矩阵已在 vivo V2352A（Android 16）完成：黑白名单、地区/Fallback、
+  节点分数恢复、停止按钮均已签核，详见 `docs/MANUAL-MATRIX-T001.md`（13/15 PASS）。
+  第 10 项七天衰减与第 12 项抖音评论为 DEFERRED，各有明确依据，未声称通过。
+- [x] 启动/停止与网络切换的 logcat 已采集（`scripts/android-collect-logs.sh`，
+  脱敏后仅存本地）；`START/STOP=PASS`、`ERROR_SIGNATURE=NONE`。进程重启与崩溃
+  恢复的专项 logcat 尚未单独记录。
 
 ### P2：Windows 和发布
 
@@ -181,7 +184,7 @@ systemd-analyze verify linux/smart-box@.service linux/smart-box-watchdog@.servic
 env SMART_BOX_CORE=/usr/local/lib/smart-box/smart-box-core GOTOOLCHAIN=go1.26.5 go test ./...   # converter; pin from TOOLCHAIN_VERSION
 /usr/local/lib/smart-box/smart-box-core check -D ~/.local/state/smart-box -c ~/.config/smart-box/profile.json
 /usr/local/lib/smart-box/smart-box-core check -D ~/.local/state/smart-box -c ~/.config/smart-box/runtime.json
-(cd dist/smart-box-0.1.0-linux-x86_64 && sha256sum -c SHA256SUMS)
+(cd dist/smart-box-0.1.1-linux-x86_64 && sha256sum -c SHA256SUMS)
 ```
 
 涉及 TUN 的命令必须使用自动清理；验收结束后逐项确认主服务、watchdog、SmartBox
@@ -193,7 +196,8 @@ HOME/XDG，防止测试默认路径触碰真实桌面配置。
 
 1. 在可牺牲 VM/文件系统故障注入环境补真实断电测试，验证 journal 的 fsync 顺序；当前已
    验证逐阶段模拟崩溃与真实 SIGKILL，不把它们夸大成物理断电实测。
-2. 继续完成 Android 黑白名单、地区/Fallback、分数恢复和停止按钮热区矩阵；
-   仪表盘运行中订阅刷新已完成，通用 profile 编辑器/后台自动更新回执另行统一。
+2. 补 Android release 变体（proguard 混淆）的真机验证，并核对
+   `android/app/proguard-rules.pro` 对 libbox JNI 与 Gson 反射的 keep 规则；
+   0.1.1 发布的是 debug 签名变体。
 3. 下一次计划刷新后核对树莓派 profile hash、规则完整性和 core 子进程仍在线。
 4. 在 Windows runner 上补系统代理、core 崩溃恢复、原子刷新和托盘自动化测试。
