@@ -31,7 +31,7 @@
 
 ### Android
 
-- [x] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`
+- [x] `scripts/android-full-matrix.sh --serial <DEVICE_SERIAL>`
   - 验收标准：`START=PASS STOP=PASS FAILURES=0 BLOCKED_COUNT=0`
   - `RESULT=MANUAL_REQUIRED` + `exit 2` 为预期（15 项人工计数）
   - 2026-08-30 0.1.1 覆盖安装后复验通过（exit 2 / MANUAL_REQUIRED 为预期）。
@@ -39,7 +39,7 @@
 
 ### 树莓派
 
-- [x] `scripts/verify-raspberry-pi.sh --host smart-box-pi --out verification/pi-health-<timestamp>`
+- [x] `scripts/verify-raspberry-pi.sh --host <PI_SSH_HOST> --out verification/pi-health-<timestamp>`
 - [x] converter/core 服务 active
 - [x] Route-bypass 规则生效
 

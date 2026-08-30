@@ -9,7 +9,7 @@ from pathlib import Path
 class ReleaseGoNoGoLockTest(unittest.TestCase):
     def setUp(self) -> None:
         self.root = Path(__file__).resolve().parents[2]
-        self.checklist = (self.root / "RELEASE-CHECKLIST-v0.1.1.md").read_text(
+        self.checklist = (self.root / "docs" / "releases" / "RELEASE-CHECKLIST-v0.1.1.md").read_text(
             encoding="utf-8"
         )
         self.changelog = (self.root / "CHANGELOG.md").read_text(encoding="utf-8")
@@ -42,7 +42,7 @@ class ReleaseGoNoGoLockTest(unittest.TestCase):
 
     def test_linux_android_gates_closed_windows_out_of_scope(self) -> None:
         self.assertIn(
-            "- [x] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`",
+            "- [x] `scripts/android-full-matrix.sh --serial <DEVICE_SERIAL>`",
             self.checklist,
         )
         self.assertIn(

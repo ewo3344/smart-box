@@ -12,7 +12,7 @@
 
 **设备信息**:
 
-- 型号: vivo V2352A (`10AE6J03LC001JL`)
+- 型号: vivo V2352A（序列号见本地验证记录，不入库）
 - Android 版本: 16
 - 测试版本: smart-box 0.1.1-core.1.14.0-beta.14（覆盖安装，数据保留；人工矩阵观察沿用 0.1.0）
 
@@ -42,7 +42,7 @@
 
 - 组页不显示节点罚分：core 已暴露 `AppliedFailurePenalty`，Android 组页尚未接入。属功能缺口，不影响选路。计划 v0.1.2。
 
-**0.1.1 覆盖安装 (2026-08-30)**: 已验证。签名源 `~/.android/smart-box-device.keystore`（alias `androiddebugkey`）。`adb install -r` 后 `versionName=0.1.1-core.1.14.0-beta.14` / `versionCode=10001`，数据保留。自动化 `START=PASS` `STOP=PASS` `FAILURES=0` `BLOCKED_COUNT=0` `ERROR_SIGNATURE=NONE` `RESULT=MANUAL_REQUIRED` exit 2。脚本停 VPN 后设备 VPN 为关（`Active vpn type: -1`，`sessionId=null`）。未降级。
+**0.1.1 覆盖安装 (2026-08-30)**: 已验证。签名源为与设备已装版本一致的本地调试 keystore（alias `androiddebugkey`，材料仅存本机）。`adb install -r` 后 `versionName=0.1.1-core.1.14.0-beta.14` / `versionCode=10001`，数据保留。自动化 `START=PASS` `STOP=PASS` `FAILURES=0` `BLOCKED_COUNT=0` `ERROR_SIGNATURE=NONE` `RESULT=MANUAL_REQUIRED` exit 2。脚本停 VPN 后设备 VPN 为关（`Active vpn type: -1`，`sessionId=null`）。未降级。
 
 **证据位置**: 本地 `verification/` 目录（不入库）
 
