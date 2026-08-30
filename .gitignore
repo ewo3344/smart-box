@@ -60,6 +60,7 @@ verification/
 crash-fix-*/
 *-fix-*/
 *-delivery-*/
+archive/
 .git-init.lock
 smart-box-handoff-*.zip
 HANDOFF.md
