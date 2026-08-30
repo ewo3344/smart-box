@@ -7,15 +7,21 @@
 
 ---
 
-## [未发布]
+## [0.1.1] - 发布时间由维护者决定
 
 ### 验收
 - **P0 门禁 (2026-08-29)**: Linux 单元测试与 converter 测试通过；发布包 checksum 通过。Android 设备矩阵观察到 START/STOP 成功、无失败与 BLOCKED，脚本按设计保留人工项为 MANUAL_REQUIRED。树莓派 converter 与 core 服务为 active，route-bypass 优先级 8998/8999 存在。
-- **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 9 项失败罚分为 FAIL（待确认）；第 10、12 项 DEFERRED。
+- **T001 人工矩阵 (2026-08-29)**: `docs/MANUAL-MATRIX-T001.md` 在设备 `10AE6J03LC001JL` 上签核 1–8、11、13–15 为 PASS；第 10、12 项 DEFERRED。
+- **T001 第 9 项更正 (2026-08-30)**: 罚分由 `smart_score_test.go` 覆盖并通过 `SmartGroupCandidateStatus` 暴露。组页只渲染 `urlTestDelay`，UI 看不到罚分属预期。关 Wi-Fi 时移动数据仍在，401ms 为成功探测。第 9 项改为 PASS。13/15 PASS，2/15 DEFERRED，0 FAIL。
+- **Linux 0.1.1 tar.gz 冒烟 (2026-08-30)**: 解压 `smart-box-0.1.1-linux-x86_64.tar.gz`，包内 `sha256sum -c SHA256SUMS` 全部成功。`sudo ./install.sh` 因 uid 0 拒绝（需桌面用户走 pkexec）。桌面用户 `./install.sh` 覆盖安装后 `smart-box@e` 与 `smart-box-watchdog@e` 两次均为 `active`。卸载后两 unit inactive、`SmartBox` 接口消失、直连 `example.com` HTTP/2 200。本机为日常出口，已重装 0.1.1 并拉起两 unit（`SmartBox` 恢复）。
+- **Windows 165MB 定论 (2026-08-30)**: `build-windows.ps1` 为 `--self-contained true`，未带 `PublishTrimmed`。试加 `-p:PublishTrimmed=true` 被 SDK 拒绝（`NETSDK1175`，Windows 窗体不支持剪裁）。属 self-contained + WPF/WinForms 正常代价，不改打包方式、不重打 zip。
+- **v0.1.1 发布范围 (2026-08-30)**: 发布 Linux 与 Android。Windows 交叉编译产物不随 Release 上传（运行时未在真机验证，范围外而非阻塞）。结论 **可发布（Linux + Android）**；合并 / tag / GitHub Release 仍待维护者放行。
+- **Android 0.1.1 vivo 覆盖安装 (2026-08-30)**: 用 `~/.android/smart-box-device.keystore`（alias `androiddebugkey`）重签后 `adb install -r` 成功。`versionName=0.1.1-core.1.14.0-beta.14` / `versionCode=10001`，数据保留。`android-full-matrix.sh`：`START=PASS` `STOP=PASS` `FAILURES=0` `BLOCKED_COUNT=0` `ERROR_SIGNATURE=NONE` `RESULT=MANUAL_REQUIRED` exit 2。
 - **树莓派健康检查 (2026-08-30)**: `scripts/verify-raspberry-pi.sh --host smart-box-pi` 报告 Result PASS、非 BLOCKED；`smart-box-converter.service` 与 `smart-box.service` 为 active，route-bypass 规则 8998/8999 存在；`file_profile.json=present` 与 `file_cache.db=present`（完整性通过）。
 - **Submodule 发布门禁 (2026-08-29)**: `scripts/publish-submodules.sh --check` 拒绝 fork 远端不可达的 gitlink，以及缺少 `smart.go` / Android smart-box 包名的指针。`--setup-remotes` 在 submodule 工作树加 `publish` remote 指向 fork，不更新 gitlink。
 
 ### 修复
+- **Windows 交叉编译包 (2026-08-30)**: `build-windows.ps1` 在 Linux 上设置 `GOOS=windows` 与 `EnableWindowsTargeting`，并把 `README.md`、`config/` 模板打进 zip。
 - **树莓派健康检查误报 missing (2026-08-30)**: `/var/lib/smart-box/profile.json` 与 `cache.db` 实际存在但目录为 root `0700`，无特权 SSH 用户看不到。`verify-raspberry-pi.sh` 对这两条路径增加 `sudo -n` 探测，并把 `file_*=present` 纳入 PASS 条件。
 - **TUN 无法启动（部署配置，2026-08-25）**: `smart-box@e.service` 被运行时 mask 且「🎯 基准 Smart」缓存选中已失效的「🇬🇧 英国 Smart」，导致 baseline-dns 与 GitHub 链路 DNS 全部超时、联网验收循环失败。解除 runtime mask，将基准/GitHub 组固定到健康的「🇸🇬 新加坡 Smart」（settings.json 与 runtime.json 同步），备份并移除残留选择的 cache.db。详见 `tun-startup-fix-2026-08-25/`。
 

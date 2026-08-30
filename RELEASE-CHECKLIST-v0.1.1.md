@@ -1,81 +1,88 @@
 # v0.1.1 Release Checklist
 
-**Target Date**: 2026-09-12
+**发布时间**: 由维护者决定
 **Type**: Patch Release
 **Focus**: 测试覆盖和稳定性收敛
 
 ---
 
-## 准备阶段（Release - 7 days）
+## 准备阶段
 
-- [ ] 创建 release 分支: `git checkout -b release/v0.1.1`
-- [ ] 更新版本号: `./scripts/version-manager.sh bump 0.1.1 --yes`
-- [ ] 验证版本一致性: `./scripts/version-manager.sh check`
-- [ ] 更新 CHANGELOG.md（将 `[未发布]` 改为 `[0.1.1] - 2026-09-12`）
-- [ ] 冻结新功能（仅接受 bugfix）
+- [x] 创建 release 分支: `git checkout -b release/v0.1.1`
+- [x] 更新版本号: `./scripts/version-manager.sh bump 0.1.1 --yes`
+- [x] 验证版本一致性: `./scripts/version-manager.sh check`
+- [x] 更新 CHANGELOG.md（将 `[未发布]` 改为 `[0.1.1]`；发布时间由维护者决定）
+- [x] 冻结新功能（仅接受 bugfix）
 
 ---
 
-## 测试阶段（Release - 5 days）
+## 测试阶段
 
 ### Linux
 
-- [ ] `scripts/verify-release.sh --allow-live`
-- [ ] Linux 单元测试全部通过
-- [ ] 发布清单 checksum 验证通过
+- [x] `scripts/verify-release.sh --allow-live`
+- [x] Linux 单元测试全部通过
+- [x] 发布清单 checksum 验证通过
 
 ### Converter
 
-- [ ] `cd converter && env GOTOOLCHAIN=go1.26.5 go test ./...`
-- [ ] `env GOTOOLCHAIN=go1.26.5 go test -race ./...`
+- [x] `cd converter && env GOTOOLCHAIN=go1.26.5 go test ./...`
+- [x] `env GOTOOLCHAIN=go1.26.5 go test -race ./...`
 
 ### Android
 
-- [ ] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`
+- [x] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`
   - 验收标准：`START=PASS STOP=PASS FAILURES=0 BLOCKED_COUNT=0`
   - `RESULT=MANUAL_REQUIRED` + `exit 2` 为预期（15 项人工计数）
-- [ ] `docs/MANUAL-MATRIX-T001.md` 签核完成（12/15 PASS，3/15 DEFERRED）
+  - 2026-08-30 0.1.1 覆盖安装后复验通过（exit 2 / MANUAL_REQUIRED 为预期）。
+- [x] `docs/MANUAL-MATRIX-T001.md` 签核完成（13/15 PASS，2/15 DEFERRED 第 10、12 项，0 FAIL）
 
 ### 树莓派
 
-- [ ] `scripts/verify-raspberry-pi.sh --host smart-box-pi --out verification/pi-health-<timestamp>`
-- [ ] converter/core 服务 active
-- [ ] Route-bypass 规则生效
+- [x] `scripts/verify-raspberry-pi.sh --host smart-box-pi --out verification/pi-health-<timestamp>`
+- [x] converter/core 服务 active
+- [x] Route-bypass 规则生效
 
-### Windows（环境就绪时）
+### Windows
 
-- [ ] `scripts/verify-windows.ps1 -OutputDirectory verification\windows-verify-<timestamp>`
-- [ ] 构建成功，托盘应用可启动
+不适用（本次发布不含 Windows）。
+
+- [x] 交叉编译产物生成（Linux 上 `scripts/build-windows.ps1`，产出 `dist/smart-box-0.1.1-windows-x64.zip`，PE32+；仅作记录，不随 Release 上传）
+- 运行时验证：不在本次发布范围（无 Windows 真机；不作为阻塞项）
 
 ### 性能回归
 
 - [ ] 对比 v0.1.0：启动时间 / 内存占用 / 连接建立延迟
+      未完成：本轮无对比数据。非本 patch 硬阻塞，但不构成可发布。
 - [ ] 无明显回归（±10% 以内）
+      同上。
 
 ---
 
-## 构建阶段（Release - 3 days）
+## 构建阶段
 
 - [ ] `scripts/build-all-platforms.sh`
-- [ ] 生成 SHA256SUMS
+      未完成：本分支未单独执行；Linux 单测已由 `verify-release.sh` 覆盖。非阻塞。
+- [x] 生成 SHA256SUMS
 - [ ] 验证所有产物可安装：
-  - [ ] Linux: tar.gz 解压 + `install.sh`
-  - [ ] Android: APK 安装（覆盖安装保留数据）
-  - [ ] Windows: zip 解压 + exe 启动
+  - [x] Linux: tar.gz 解压 + `install.sh`（2026-08-30 冒烟：两 unit active，卸载后 SmartBox 消失、直连恢复，日常出口重装 0.1.1）
+  - [x] Android: APK 安装（覆盖安装保留数据）
+        2026-08-30：`install -r` 成功，`versionCode=10001`，`files/` 与 `databases/` 保留。
+  - Windows: zip 解压 + exe 启动 — 不适用（本次发布不含 Windows）
 
 ### Submodule 发布门禁
 
-- [ ] `scripts/publish-submodules.sh --check`
-- [ ] 输出 `CHECK PASS`（gitlink 在 fork 远端可达且含 smart 代码）
+- [x] `scripts/publish-submodules.sh --check`
+- [x] 输出 `CHECK PASS`（gitlink 在 fork 远端可达且含 smart 代码）
 
 ---
 
-## 文档阶段（Release - 2 days）
+## 文档阶段
 
-- [ ] 更新 README.md（如有变更）
-- [ ] 编写 `docs/RELEASE-NOTES-v0.1.1.md`
-- [ ] 更新版本兼容性说明（如有新依赖或平台要求变化）
-- [ ] 确认 `docs/MANUAL-MATRIX-T001.md` 无订阅 URL、Token、账号、私密路径
+- [x] 更新 README.md（如有变更）（本 patch 无需改产品 README）
+- [x] 编写 `docs/RELEASE-NOTES-v0.1.1.md`
+- [x] 更新版本兼容性说明（如有新依赖或平台要求变化）（`docs/DEVICE-MATRIX.md`）
+- [x] 确认 `docs/MANUAL-MATRIX-T001.md` 无订阅 URL、Token、账号、私密路径
 
 ---
 
@@ -95,7 +102,6 @@
 - [ ] 上传发布产物：
   - smart-box-0.1.1-linux-x86_64.tar.gz + SHA256
   - smart-box-0.1.1-android-arm64.apk + SHA256
-  - smart-box-0.1.1-windows-x64.zip + SHA256
 - [ ] 粘贴 `docs/RELEASE-NOTES-v0.1.1.md` 内容
 - [ ] 标记为 Latest Release
 
@@ -106,7 +112,7 @@
 
 ---
 
-## 发布后（Release + 1 day）
+## 发布后
 
 - [ ] 监控 GitHub Issues 和社区反馈（如有）
 - [ ] 更新 `SMART-BOX-PLAN.md` 和 `DEVELOPMENT-PLAN.md` 的里程碑状态
@@ -125,6 +131,24 @@
 
 ---
 
+## 发布前结论（2026-08-30）
+
+**可发布（Linux + Android）。** 发布时间由维护者决定。本结论供放行判断，**不是发布信号**。合并 `main`、打 `v0.1.1` tag、创建 GitHub Release 仍须维护者确认后执行。
+
+范围外（非阻塞项）：
+
+- **Windows**：不适用（本次发布不含 Windows）。交叉编译产物仅作记录，不上传。
+
+Linux / Android 门禁已关闭：tarball 装卸冒烟、vivo 0.1.1 覆盖安装、T001 自动化、13/15 人工矩阵（2/15 DEFERRED 第 10、12 项）。
+
+其余未勾且不构成阻塞：发布日 Git/GitHub/冒烟（待放行后执行）；性能回归未采数；`build-all-platforms.sh` 未单独跑。
+
+已知产品缺口（非缺陷）：Android 组页不显示节点罚分；core 已暴露 `AppliedFailurePenalty`，计划 v0.1.2 接入。
+
+gitlink 仍为脏工作树（`M android` / `M core`），未暂存。
+
+---
+
 **维护者**: @ewo3344
 **首次创建**: 2026-08-30
-**最后更新**: 发布日填写
+**最后更新**: 2026-08-30（结论：可发布（Linux + Android）；Windows 不在本次发布范围）
