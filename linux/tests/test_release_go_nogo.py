@@ -33,19 +33,23 @@ class ReleaseGoNoGoLockTest(unittest.TestCase):
             r"\|\s*12\s*\|\s*DOUYIN_COMMENT_POST\s*\|\s*DEFERRED\s*\|",
         )
 
-    def test_android_overlay_and_matrix_stay_open_when_blocked(self) -> None:
+    def test_android_overlay_closed_windows_runtime_keeps_nogo(self) -> None:
         self.assertIn(
-            "- [ ] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`",
+            "- [x] `scripts/android-full-matrix.sh --serial 10AE6J03LC001JL`",
             self.checklist,
         )
         self.assertIn(
-            "- [ ] Android: APK 安装（覆盖安装保留数据）",
+            "- [x] Android: APK 安装（覆盖安装保留数据）",
             self.checklist,
         )
-        self.assertIn("BLOCKED", self.checklist)
-        self.assertIn("不可发布", self.checklist)
-        self.assertIn("BLOCKED", self.changelog)
+        self.assertIn("0.1.1-core.1.14.0-beta.14", self.matrix)
         self.assertIn("vivo", self.changelog)
+        self.assertIn("覆盖安装", self.changelog)
+        self.assertIn("不可发布", self.checklist)
+        self.assertIn(
+            "- **Windows 运行时未验证**",
+            self.checklist,
+        )
 
 
 if __name__ == "__main__":

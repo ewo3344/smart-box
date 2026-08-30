@@ -1,11 +1,11 @@
 # Android T001 人工验收矩阵
 
 **设备**: vivo V2352A (10AE6J03LC001JL) / Android 16
-**版本**: smart-box 0.1.0-core.1.14.0-beta.14
+**版本**: smart-box 0.1.1-core.1.14.0-beta.14
 **自动化报告**: 本地 verification 目录（不入库）
 **签核日期**: 2026-08-29
 
-**0.1.1 覆盖安装 (2026-08-30)**: BLOCKED。`~/.android/debug.keystore` SHA-256 `2e8d0212…` 与设备已装 0.1.0 签名 `8de57370…` 不是同一把 key。未卸载、未覆盖安装（保留设备 profile/cache）。人工 14 项结论沿用 0.1.0 观察；第 12 项保持 DEFERRED。
+**0.1.1 覆盖安装 (2026-08-30)**: 用 `~/.android/smart-box-device.keystore`（alias `androiddebugkey`）重签后 `adb install -r` 成功，`versionName=0.1.1-core.1.14.0-beta.14` / `versionCode=10001`。`files/` 与 `databases/` 与安装前一致（数据保留）。`android-full-matrix.sh` 复验 `START=PASS` `STOP=PASS` `FAILURES=0` `BLOCKED_COUNT=0` `ERROR_SIGNATURE=NONE` `RESULT=MANUAL_REQUIRED` exit 2。人工 14 项结论沿用 0.1.0 观察；第 12 项保持 DEFERRED。
 
 脚本 `scripts/android-full-matrix.sh` 按设计不推断以下项目，需人工签核。
 每项填写：结论(PASS/FAIL) / 执行时间 / 观察到的现象。
