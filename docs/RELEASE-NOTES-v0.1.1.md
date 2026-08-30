@@ -60,7 +60,7 @@
   - 触发条件：组页对 Smart 组点「测试」。路径为 `StartedService.URLTest` → `Smart.CheckOutbounds` → `probe(force=true)` → `applySmartProbeState`。关网后测速失败会 `state.failures++` 并 `queueScore`。
   - 影响范围：失败计数进入 score（默认每次 +500），影响后续选路；组页只渲染 `urlTestDelay`，T001 未见 +500。Dial/Listen 真实连接失败路径的 `recordFailure` 不受此项文档变更影响。v0.1.1 不改 core。
   - 计划修复：v0.1.2（组页展示罚分，或让手动 urlTest 只写 History、不走 `applySmartProbeState`）。
-- **Windows 客户端体积**：self-contained `smart-box.exe` 约 165MB。裁剪 / framework-dependent 打包延到 v0.1.2。
+- **Windows 客户端体积**：self-contained `smart-box.exe` 约 165MB。`PublishTrimmed` 在 `net10.0-windows` + `UseWindowsForms` 下触发 `NETSDK1175`（启用剪裁时不支持 Windows 窗体），不能作为漏参补上。framework-dependent 可降到数 MB，但要求用户自装 .NET 10 运行时，本版不降低安装门槛。体积优化延到 v0.1.2。
 
 ---
 
